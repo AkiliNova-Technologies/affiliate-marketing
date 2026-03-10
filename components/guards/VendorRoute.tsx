@@ -1,4 +1,4 @@
-import ProtectedRoute from "./ProtectedRoute";
+import { ProtectedRoute } from "./ProtectedRoute";
 
 export default function VendorRoute({
   children,
