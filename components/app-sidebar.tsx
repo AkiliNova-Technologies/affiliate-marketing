@@ -153,7 +153,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {/* Logo */}
       <SidebarHeader className="px-4 py-4 lg:py-4 border-b ">
         <Link href="/admin/dashboard" className="flex items-center gap-1">
-          <img src="/logo.png" alt="Logo" className="h-8" />
+          <img src="/Mono_dark.svg" alt="Logo" className="h-8" />
         </Link>
       </SidebarHeader>
 

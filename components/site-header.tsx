@@ -1,7 +1,8 @@
 "use client"
 
-import { IconBell, IconMoon, IconSun, IconUser } from "@tabler/icons-react"
+import { IconBell, IconMoon, IconSun } from "@tabler/icons-react"
 import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -14,22 +15,45 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useReduxAuth } from "@/hooks/useReduxAuth"
+import { ROLE_DASHBOARDS } from "@/components/guards/ProtectedRoute"
 
 export function SiteHeader() {
   const { theme, setTheme } = useTheme()
+  const router = useRouter()
+  const { user, signout, getFullName } = useReduxAuth()
+
+  const fullName = getFullName()
+
+  // Build initials from name or email
+  const initials = (() => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    }
+    if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase()
+    }
+    return "U"
+  })()
+
+  // Determine settings path based on role
+  const settingsPath = (() => {
+    if (!user) return "/settings"
+    const dashboard = ROLE_DASHBOARDS[user.userType] ?? "/dashboard"
+    // e.g. /admin/dashboard → /admin/settings
+    return dashboard.replace("/dashboard", "/settings")
+  })()
 
   return (
     <header className="sticky top-0 z-30 flex h-[--header-height] shrink-0 items-center gap-2 border-b bg-background/95 backdrop-blur transition-[width,height] ease-linear">
       <div className="flex w-full items-center gap-2 px-4 py-4 lg:px-6 lg:py-3.5">
-        {/* Sidebar toggle — orange circle chevron matching design */}
+        {/* Sidebar toggle */}
         <div className="flex items-center">
           <SidebarTrigger className="-ml-10 size-8 rounded-full bg-[#F97316] text-white hover:bg-[#F97316]/90 hover:text-white [&_svg]:size-4" />
         </div>
 
-        {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Right actions */}
         <div className="flex items-center gap-3">
           {/* Theme toggle */}
           <Button
@@ -63,21 +87,33 @@ export function SiteHeader() {
                 className="flex items-center gap-2 rounded-full px-2 py-1 h-auto"
               >
                 <Avatar className="size-7">
-                  <AvatarImage src="/avatars/user.jpg" alt="John Smith" />
-                  <AvatarFallback className="bg-muted text-xs">JS</AvatarFallback>
+                  <AvatarImage src={user?.avatarUrl ?? ""} alt={fullName} />
+                  <AvatarFallback className="bg-muted text-xs">{initials}</AvatarFallback>
                 </Avatar>
                 <span className="hidden text-sm font-medium sm:inline">
-                  John Smith
+                  {fullName}
                 </span>
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-medium">{fullName}</span>
+                  <span className="text-xs text-muted-foreground font-normal truncate">
+                    {user?.email}
+                  </span>
+                </div>
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push(settingsPath)}>
+                Settings
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={signout}
+              >
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>

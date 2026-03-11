@@ -1,26 +1,10 @@
-// app/admin/settings/page.tsx
-//
-// Covers all 6 designs:
-//   Image 6 — General tab, pristine (Save Changes disabled)
-//   Image 5 — General tab, name changed (Save Changes active)
-//   Image 4 — General tab, success banner after save
-//   Image 3 — Security tab, pristine (Reset Password disabled)
-//   Image 2 — Security tab, all fields filled (Reset Password active)
-//   Image 1 — Security tab, success banner after reset
-
 "use client"
 
 import * as React from "react"
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import {
-  IconX,
-  IconCheck,
-  IconCamera,
-  IconUpload,
-  IconTrash,
-  IconChevronDown,
-  IconEye,
-  IconEyeOff,
+  IconX, IconCheck, IconCamera, IconUpload, IconTrash,
+  IconChevronDown, IconEye, IconEyeOff,
 } from "@tabler/icons-react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
@@ -28,12 +12,11 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
-
-// ─── Types ──────────────────────────────────────────────────────────────────
+import { useReduxAuth } from "@/hooks/useReduxAuth"
+import api from "@/utils/api"
+import { toast } from "sonner"
 
 type Tab = "general" | "security"
-
-// ─── Country codes ───────────────────────────────────────────────────────────
 
 const COUNTRY_CODES = [
   { code: "256", label: "🇺🇬 UG" },
@@ -44,7 +27,24 @@ const COUNTRY_CODES = [
   { code: "44",  label: "🇬🇧 GB" },
 ]
 
-// ─── Success / info banner ───────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Split a "+256 778989582" or "778989582" phone into { cc, number } */
+function parsePhone(raw: string | undefined): { cc: string; number: string } {
+  if (!raw) return { cc: "256", number: "" }
+  const stripped = raw.replace(/\s+/g, "")
+  for (const c of COUNTRY_CODES) {
+    if (stripped.startsWith(`+${c.code}`)) {
+      return { cc: c.code, number: stripped.slice(c.code.length + 1) }
+    }
+    if (stripped.startsWith(c.code)) {
+      return { cc: c.code, number: stripped.slice(c.code.length) }
+    }
+  }
+  return { cc: "256", number: stripped }
+}
+
+// ─── Success banner ───────────────────────────────────────────────────────────
 
 function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
@@ -58,10 +58,10 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
   )
 }
 
-// ─── Password input with show/hide ──────────────────────────────────────────
+// ─── Password field ───────────────────────────────────────────────────────────
 
 function PasswordInput({
-  label, value, onChange, placeholder = "Enter your new password",
+  label, value, onChange, placeholder = "Enter your password",
 }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   const [show, setShow] = useState(false)
   return (
@@ -89,7 +89,7 @@ function PasswordInput({
   )
 }
 
-// ─── Tab bar ────────────────────────────────────────────────────────────────
+// ─── Tab bar ──────────────────────────────────────────────────────────────────
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
@@ -100,9 +100,7 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
           onClick={() => onChange(tab)}
           className={cn(
             "py-3 text-sm font-semibold capitalize transition-colors relative",
-            active === tab
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground"
+            active === tab ? "text-foreground" : "text-muted-foreground hover:text-foreground"
           )}
         >
           {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -115,40 +113,79 @@ function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void 
   )
 }
 
-// ─── General Tab ────────────────────────────────────────────────────────────
-
-const INITIAL_NAME  = "John Smith"
-const INITIAL_PHONE = "778989582"
-const INITIAL_CC    = "256"
+// ─── General Tab ──────────────────────────────────────────────────────────────
 
 function GeneralTab() {
-  const [name, setName]         = useState(INITIAL_NAME)
-  const [phone, setPhone]       = useState(INITIAL_PHONE)
-  const [cc, setCc]             = useState(INITIAL_CC)
-  const [ccOpen, setCcOpen]     = useState(false)
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
+  const { user, updateCurrentUser } = useReduxAuth()
+
+  // Seed state from Redux user
+  const [name, setName]       = useState(
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") || ""
+  )
+  const [cc, setCc]           = useState(parsePhone(user?.phoneNumber).cc)
+  const [phone, setPhone]     = useState(parsePhone(user?.phoneNumber).number)
+  const [ccOpen, setCcOpen]   = useState(false)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl ?? null)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [isSaving, setIsSaving]   = useState(false)
   const [showBanner, setShowBanner] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Dirty check — any change from initial values enables the button
-  const isDirty = name !== INITIAL_NAME || phone !== INITIAL_PHONE || cc !== INITIAL_CC || avatarUrl !== null
+  // Original values for dirty check
+  const originalName  = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || ""
+  const originalPhone = parsePhone(user?.phoneNumber)
+
+  const isDirty =
+    name !== originalName ||
+    phone !== originalPhone.number ||
+    cc !== originalPhone.cc ||
+    avatarFile !== null
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setAvatarUrl(url)
+    setAvatarFile(file)
+    setAvatarUrl(URL.createObjectURL(file))
   }
 
-  const handleDeleteAvatar = () => setAvatarUrl(null)
+  const handleDeleteAvatar = () => {
+    setAvatarFile(null)
+    setAvatarUrl(null)
+  }
 
   const handleSave = async () => {
     if (!isDirty) return
     setIsSaving(true)
-    await new Promise(r => setTimeout(r, 900))
-    setIsSaving(false)
-    setShowBanner(true)
+    try {
+      const [firstName, ...rest] = name.trim().split(" ")
+      const lastName = rest.join(" ")
+
+      const formData = new FormData()
+      formData.append("firstName", firstName)
+      if (lastName) formData.append("lastName", lastName)
+      formData.append("phoneNumber", `+${cc}${phone}`)
+      if (avatarFile) formData.append("avatar", avatarFile)
+
+      const { data } = await api.patch("/api/v1/profile", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+
+      // Sync Redux store with new values
+      updateCurrentUser({
+        firstName: data.firstName ?? firstName,
+        lastName: data.lastName ?? lastName,
+        phoneNumber: data.phoneNumber ?? `+${cc}${phone}`,
+        avatarUrl: data.avatarUrl ?? avatarUrl ?? undefined,
+      })
+
+      setAvatarFile(null)
+      setShowBanner(true)
+      toast.success("Profile updated successfully")
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save changes")
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   return (
@@ -160,16 +197,15 @@ function GeneralTab() {
         />
       )}
 
-      {/* Profile section */}
       <h3 className="mb-5 text-lg font-semibold text-foreground">Profile</h3>
+
+      {/* Avatar */}
       <div className="mb-8 flex items-start gap-5">
-        {/* Avatar */}
         <div className="relative shrink-0">
           <div className="size-[90px] rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
             ) : (
-              /* Default placeholder portrait */
               <svg viewBox="0 0 90 90" className="size-full" fill="none">
                 <rect width="90" height="90" fill="#e5e7eb" />
                 <circle cx="45" cy="35" r="18" fill="#9ca3af" />
@@ -177,26 +213,19 @@ function GeneralTab() {
               </svg>
             )}
           </div>
-          {/* Camera badge */}
           <button
             onClick={() => fileRef.current?.click()}
             className="absolute bottom-0 right-0 flex items-center justify-center size-8 rounded-full bg-[#F97316] text-white shadow-md hover:bg-[#F97316]/90 transition-colors"
           >
             <IconCamera className="size-4" />
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="hidden"
-            onChange={handleUpload}
-          />
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp"
+            className="hidden" onChange={handleUpload} />
         </div>
 
-        {/* Avatar actions */}
         <div className="pt-1">
           <p className="text-base font-semibold text-foreground">Change Avatar</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">JPG, PNG, WEBP Max Size 3MB</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">JPG, PNG, WEBP · Max 3MB</p>
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <button
               onClick={() => fileRef.current?.click()}
@@ -219,7 +248,6 @@ function GeneralTab() {
       {/* Personal Details */}
       <h3 className="mb-4 text-lg font-semibold text-foreground">Personal Details</h3>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-end">
-        {/* Name */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">
             Name <span className="text-[#F97316]">*</span>
@@ -231,13 +259,10 @@ function GeneralTab() {
           />
         </div>
 
-        {/* Phone — country code + number side by side */}
         <div className="sm:col-span-1 flex items-end gap-2">
-          {/* Spacer label on mobile */}
           <div className="flex-1">
             <label className="mb-1.5 block text-sm font-medium text-foreground">Phone</label>
             <div className="flex gap-2">
-              {/* Country code */}
               <div className="relative">
                 <button
                   type="button"
@@ -249,9 +274,7 @@ function GeneralTab() {
                 {ccOpen && (
                   <div className="absolute top-full left-0 z-20 mt-1 w-32 rounded-xl border bg-card shadow-lg py-1">
                     {COUNTRY_CODES.map(c => (
-                      <button
-                        key={c.code}
-                        type="button"
+                      <button key={c.code} type="button"
                         onClick={() => { setCc(c.code); setCcOpen(false) }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-xs hover:bg-muted transition-colors"
                       >
@@ -272,7 +295,16 @@ function GeneralTab() {
         </div>
       </div>
 
-      {/* Save button */}
+      {/* Email — read-only, can't be changed here */}
+      <div className="mt-4 max-w-sm">
+        <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+        <Input
+          value={user?.email ?? ""}
+          readOnly
+          className="h-12 rounded-xl border-gray-200 bg-muted text-sm text-muted-foreground cursor-not-allowed"
+        />
+      </div>
+
       <div className="mt-6">
         <Button
           onClick={handleSave}
@@ -299,9 +331,10 @@ function GeneralTab() {
   )
 }
 
-// ─── Security Tab ────────────────────────────────────────────────────────────
+// ─── Security Tab ─────────────────────────────────────────────────────────────
 
 function SecurityTab() {
+  const { user } = useReduxAuth()
   const [current,  setCurrent]  = useState("")
   const [newPass,  setNewPass]  = useState("")
   const [confirm,  setConfirm]  = useState("")
@@ -309,8 +342,8 @@ function SecurityTab() {
   const [showBanner, setShowBanner]   = useState(false)
   const [confirmError, setConfirmError] = useState("")
 
-  const allFilled  = current.trim() && newPass.trim() && confirm.trim()
-  const canSubmit  = !!(allFilled && !confirmError)
+  const allFilled = current.trim() && newPass.trim() && confirm.trim()
+  const canSubmit = !!(allFilled && !confirmError)
 
   const handleConfirmBlur = () => {
     if (confirm && newPass && confirm !== newPass) {
@@ -323,38 +356,52 @@ function SecurityTab() {
   const handleReset = async () => {
     if (!canSubmit) return
     setIsResetting(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setIsResetting(false)
-    setCurrent(""); setNewPass(""); setConfirm("")
-    setShowBanner(true)
+    try {
+      await api.post("/api/v1/profile/change-password", {
+        currentPassword: current,
+        newPassword: newPass,
+      })
+      setCurrent(""); setNewPass(""); setConfirm("")
+      setShowBanner(true)
+      toast.success("Password changed successfully")
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to change password")
+    } finally {
+      setIsResetting(false)
+    }
   }
 
   return (
     <div>
       {showBanner && (
         <SuccessBanner
-          message="Your password has been successfuly changed"
+          message="Your password has been successfully changed"
           onDismiss={() => setShowBanner(false)}
         />
       )}
 
       <h3 className="mb-5 text-lg font-semibold text-foreground">Change Password</h3>
 
+      {/* Show email as context — helpful UX */}
+      {user?.email && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Changing password for <span className="font-medium text-foreground">{user.email}</span>
+        </p>
+      )}
+
       <div className="flex flex-col gap-4 max-w-[560px]">
         <PasswordInput
           label="Current Password"
           value={current}
           onChange={setCurrent}
-          placeholder="Enter your new password"
+          placeholder="Enter your current password"
         />
         <PasswordInput
-          label="Create new password"
+          label="New Password"
           value={newPass}
           onChange={v => { setNewPass(v); if (confirmError) setConfirmError("") }}
           placeholder="Enter your new password"
         />
-
-        {/* Confirm — with mismatch error */}
         <div>
           <label className="mb-1.5 block text-sm font-medium text-foreground">
             Confirm Password <span className="text-[#F97316]">*</span>
@@ -368,7 +415,7 @@ function SecurityTab() {
               value={confirm}
               onChange={e => { setConfirm(e.target.value); if (confirmError) setConfirmError("") }}
               onBlur={handleConfirmBlur}
-              placeholder="Confirm password"
+              placeholder="Confirm new password"
               className={cn(
                 "h-12 rounded-xl pr-11 focus-visible:ring-[#F97316] text-sm",
                 confirmError ? "border-red-400 focus-visible:ring-red-300" : "border-gray-200"
@@ -378,7 +425,6 @@ function SecurityTab() {
         </div>
       </div>
 
-      {/* Reset button */}
       <div className="mt-6">
         <Button
           onClick={handleReset}
@@ -405,14 +451,14 @@ function SecurityTab() {
   )
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("general")
 
   const headings: Record<Tab, { page: string; section: string; sub: string }> = {
-    general:  { page: "Settings",         section: "Profile Settings",  sub: "Make chnages to your profile information" },
-    security: { page: "General Settings", section: "Security Settings", sub: "Make chnages to your password information" },
+    general:  { page: "Settings",          section: "Profile Settings",  sub: "Make changes to your profile information" },
+    security: { page: "General Settings",  section: "Security Settings", sub: "Make changes to your password information" },
   }
 
   const h = headings[tab]
@@ -428,21 +474,13 @@ export default function SettingsPage() {
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col p-4 lg:p-6">
-          {/* Page title */}
           <h1 className="mb-5 text-2xl font-bold text-foreground">{h.page}</h1>
-
-          {/* Settings card */}
-          <div className="w-full max-w-8xl rounded-xl border bg-card p-6 ">
-            {/* Section header */}
+          <div className="w-full max-w-8xl rounded-xl border bg-card p-6">
             <div className="mb-5">
               <h2 className="text-lg font-semibold text-foreground">{h.section}</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">{h.sub}</p>
             </div>
-
-            {/* Tabs */}
             <TabBar active={tab} onChange={setTab} />
-
-            {/* Tab content */}
             {tab === "general"  && <GeneralTab />}
             {tab === "security" && <SecurityTab />}
           </div>

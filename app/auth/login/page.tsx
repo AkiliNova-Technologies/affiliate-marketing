@@ -1,6 +1,4 @@
-// app/(auth)/sign-in/page.tsx
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,24 +7,30 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import AuthLayout from "@/layout/AuthLayout";
+import { useReduxAuth } from "@/hooks/useReduxAuth";
+import { ROLE_DASHBOARDS } from "@/components/guards/ProtectedRoute";
 
 export default function SignInPage() {
   const router = useRouter();
+  const { signin, loading } = useReduxAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   const isValid = email.trim() !== "" && password.trim() !== "";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!isValid) return;
-    setLoading(true);
-    // TODO: replace with your real sign-in call (e.g. signIn from next-auth)
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    router.push("/admin/dashboard");
+
+    try {
+      const result = await signin(email, password);
+      const destination = ROLE_DASHBOARDS[result.user.userType] ?? "/dashboard";
+      router.push(destination);
+    } catch {
+      // error toast already fired inside signin
+    }
   }
 
   return (
@@ -34,7 +38,6 @@ export default function SignInPage() {
       <h1 className="text-2xl font-semibold text-[#3b2f2f] mb-6 text-center">
         Sign In to your account
       </h1>
-
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
           <Label htmlFor="email" className="text-sm text-[#3b2f2f]">

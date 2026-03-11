@@ -1,6 +1,7 @@
 // components/section-cards.tsx
 import { IconUsers, IconSpeakerphone, IconPackage, IconCurrencyDollar } from "@tabler/icons-react"
 import { cn } from "@/lib/utils"
+import { TrendingUpIcon } from "lucide-react"
 
 interface StatCard {
   title: string
@@ -8,6 +9,7 @@ interface StatCard {
   icon: React.ElementType
   gradient: string
   iconBg: string
+  change?: string
 }
 
 const cards: StatCard[] = [
@@ -75,13 +77,23 @@ function StatCard({ card }: { card: StatCard }) {
         />
       </svg>
 
-      <div className="relative flex items-start justify-between">
-        <div>
-          <p className="text-sm font-medium text-white/80">{card.title}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight">{card.value}</p>
-        </div>
-        <div className={cn("rounded-lg p-2", card.iconBg)}>
+     <div className="relative flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-white/80">{card.title}</p>
+            <div className={cn("rounded-lg p-2", card.iconBg)}>
           <card.icon className="size-5 text-white" />
+        </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-3xl font-bold tracking-tight">{card.value}</p>
+            {card.change && (
+              <p className="flex items-center gap-1 text-xs text-white/90 whitespace-nowrap ml-4">
+                <TrendingUpIcon size={14} /> {card.change}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,7 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-const BASE_URL =
-  "https://affiliate-marketing-system-backend-production.up.railway.app";
+const BASE_URL = "";
 
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -24,15 +23,17 @@ const api = axios.create({
   baseURL: BASE_URL,
   timeout: 15000,
   headers: { "Content-Type": "application/json" },
-  withCredentials: false,
+  withCredentials: true, // ← MUST be true so the refresh cookie is sent automatically
 });
 
 const refreshApi = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
   headers: { "Content-Type": "application/json" },
-  withCredentials: false,
+  withCredentials: true, // ← same here — the refresh token lives in an httpOnly cookie
 });
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthData {
   userId: string;
@@ -54,6 +55,8 @@ interface AuthState {
   emailVerified?: boolean;
 }
 
+// ─── In-memory access token ───────────────────────────────────────────────────
+
 let inMemoryAccessToken: string | null = null;
 
 export const setAccessToken = (token: string | null) => {
@@ -68,6 +71,8 @@ export const setAccessToken = (token: string | null) => {
 export const getAccessToken = (): string | null => {
   return inMemoryAccessToken;
 };
+
+// ─── Auth state ───────────────────────────────────────────────────────────────
 
 export const getAuthState = (): AuthState => {
   if (typeof window === "undefined") {
@@ -98,21 +103,26 @@ export const getAuthState = (): AuthState => {
   }
 };
 
-// Check if token is expired or about to expire
+// ─── Token expiry check ───────────────────────────────────────────────────────
+
 const isTokenExpired = (token: string, bufferMinutes: number = 5): boolean => {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
-    const expiry = payload.exp * 1000; // Convert to milliseconds
+    const expiry = payload.exp * 1000;
     const now = Date.now();
     const buffer = bufferMinutes * 60 * 1000;
     return now >= expiry - buffer;
   } catch (error) {
     console.error("Error checking token expiry:", error);
-    return true; // Assume expired if parsing fails
+    return true;
   }
 };
 
-// Save auth data after login (only user data, token stays in memory)
+// ─── Save auth data after login ───────────────────────────────────────────────
+//
+// Login response shape:
+//   { accessToken, expiresIn, tokenType, user: { id, role, email, ... } }
+//
 export const saveAuthData = (loginResponse: {
   userId: string;
   email: string;
@@ -139,44 +149,73 @@ export const saveAuthData = (loginResponse: {
   setAccessToken(loginResponse.tokens.accessToken);
 };
 
-// **FIXED:** This function no longer attempts to read an access token from storage.
-// Instead, it should be used to trigger a silent refresh on app startup.
-// Call `attemptSilentRefresh()` (defined below) instead.
-export const restoreAccessToken = () => {
-  // Deprecated – kept for compatibility. Use `attemptSilentRefresh()`.
-  console.warn("restoreAccessToken is deprecated. Use attemptSilentRefresh() instead.");
+// ─── Save after a token refresh ───────────────────────────────────────────────
+//
+// Refresh response shape (same flat shape as login):
+//   { accessToken, expiresIn, tokenType }
+//
+const saveRefreshData = (accessToken: string, expiresIn: number) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const authDataStr = localStorage.getItem("authData");
+    if (authDataStr) {
+      const authData: AuthData = JSON.parse(authDataStr);
+      authData.tokenExpiry = Date.now() + expiresIn * 1000;
+      localStorage.setItem("authData", JSON.stringify(authData));
+    }
+  } catch {
+    // localStorage unavailable or corrupt — not fatal
+  }
+
+  setAccessToken(accessToken);
 };
 
-// Attempt to refresh the token silently using the http‑only cookie.
-// Call this once when your app initialises.
+// ─── Core refresh call ────────────────────────────────────────────────────────
+//
+// Uses refreshApi (separate axios instance) so the response interceptor on the
+// main `api` instance never intercepts this call and causes an infinite loop.
+//
+const refreshBackendToken = async (): Promise<string> => {
+  // The refresh token is an httpOnly cookie sent automatically by the browser
+  // because withCredentials: true is set on refreshApi.
+  const response = await refreshApi.post("/api/v1/auth/refresh");
+  const data = response.data;
+
+  // ── Validate response ───────────────────────────────────────────────────────
+  // Guard against the backend returning a 200 with an error body
+  // e.g. { code: "AUTH_REFRESH_REUSED", message: "..." }
+  if (!data.accessToken || data.code?.startsWith("AUTH_")) {
+    const msg = data.message || "Refresh token invalid or reused";
+    console.error("❌ Refresh rejected by server:", msg);
+    throw new Error(msg);
+  }
+
+  // Flat shape: { accessToken, expiresIn, tokenType }
+  saveRefreshData(data.accessToken, data.expiresIn);
+  return data.accessToken;
+};
+
+// ─── Public: silent refresh on app init ──────────────────────────────────────
+
 export const attemptSilentRefresh = async (): Promise<boolean> => {
   try {
     await refreshBackendToken();
     return true;
-  } catch {
+  } catch (err) {
+    console.warn("Silent refresh failed:", err);
     return false;
   }
 };
 
-// Refresh token endpoint call – expects the cookie to be sent automatically
-const refreshBackendToken = async (): Promise<string> => {
-  const response = await refreshApi.post("/api/v1/auth/refresh");
-
-  const { accessToken, expiresInSec } = response.data.tokens;
-
-  const authDataStr = localStorage.getItem("authData");
-  if (authDataStr) {
-    const authData: AuthData = JSON.parse(authDataStr);
-    authData.tokenExpiry = Date.now() + expiresInSec * 1000;
-    localStorage.setItem("authData", JSON.stringify(authData));
-  }
-
-  setAccessToken(accessToken);
-  return accessToken;
+// Deprecated — kept for import compatibility
+export const restoreAccessToken = () => {
+  console.warn("restoreAccessToken is deprecated. Use attemptSilentRefresh() instead.");
 };
 
-// Request interceptor: attach token if available
-api.interceptors.request.use(async (config) => {
+// ─── Request interceptor — attach access token ────────────────────────────────
+
+api.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -184,7 +223,8 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Response interceptor with improved error logging and retry logic
+// ─── Response interceptor — handle 401 and network errors ────────────────────
+
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -193,16 +233,18 @@ api.interceptors.response.use(
       _retryCount?: number;
     };
 
-    // **Improved logging:** guard against missing error.config
-    console.error("❌ API error:", {
-      url: error.config?.url ?? "N/A",
-      method: error.config?.method ?? "N/A",
-      status: error.response?.status ?? "NO_RESPONSE",
-      data: error.response?.data ?? null,
-      message: error.message,
-    });
+    // Log all API errors (but don't log missing config — can happen on network drop)
+    if (error.config) {
+      console.error("❌ API error:", {
+        url: error.config.url ?? "N/A",
+        method: error.config.method ?? "N/A",
+        status: error.response?.status ?? "NO_RESPONSE",
+        data: error.response?.data ?? null,
+        message: error.message,
+      });
+    }
 
-    // Handle 401 Unauthorized – token might be expired
+    // ── 401 handler: try to refresh once, then retry original request ──────────
     if (
       error.response?.status === 401 &&
       originalRequest &&
@@ -213,8 +255,8 @@ api.interceptors.response.use(
     ) {
       originalRequest._retry = true;
 
+      // If a refresh is already in-flight, queue this request until it resolves
       if (isRefreshing) {
-        // Queue this request while a refresh is already in progress
         return new Promise((resolve, reject) => {
           failedQueue.push({
             resolve: (token: string) => {
@@ -236,55 +278,44 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error("❌ Token refresh failed, clearing auth:", refreshError);
         processQueue(refreshError, null);
-
-        // Clear auth data
         clearAuthData();
-
-        // Dispatch logout event so the UI can react
-        window.dispatchEvent(new CustomEvent("auth:logout"));
-
-        // Reject with a user‑friendly message
-        return Promise.reject(
-          new Error("Session expired. Please login again."),
-        );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auth:logout"));
+        }
+        return Promise.reject(new Error("Session expired. Please login again."));
       } finally {
         isRefreshing = false;
       }
     }
 
-    // Handle network errors (no response) with retry
+    // ── Network error: retry up to 3 times with back-off ──────────────────────
     if (!error.response) {
       console.error("Network error - no response received");
 
-      // Only retry if we haven't already and haven't exceeded max retries
       if (originalRequest && !originalRequest._retry) {
         originalRequest._retry = true;
-        originalRequest._retryCount = (originalRequest._retryCount || 0) + 1;
+        originalRequest._retryCount = (originalRequest._retryCount ?? 0) + 1;
 
         if (originalRequest._retryCount <= 3) {
-          const retryDelay = originalRequest._retryCount * 1000;
-          console.log(`Retrying request (${originalRequest._retryCount}/3) in ${retryDelay}ms...`);
-
-          return new Promise((resolve) => {
-            setTimeout(
-              () => resolve(api(originalRequest)),
-              Math.min(retryDelay, 5000),
-            );
-          });
+          const delay = Math.min(originalRequest._retryCount * 1000, 5000);
+          console.log(`Retrying (${originalRequest._retryCount}/3) in ${delay}ms…`);
+          return new Promise((resolve) =>
+            setTimeout(() => resolve(api(originalRequest)), delay)
+          );
         } else {
-          console.error("Max retries reached for network error. Giving up.");
+          console.error("Max retries reached. Giving up.");
         }
       }
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
-// Token refresh scheduler
+// ─── Proactive token refresh scheduler ───────────────────────────────────────
+
 let schedulerInterval: ReturnType<typeof setInterval> | null = null;
 
-// Start proactive token refresh (checks every 4 minutes)
 export const startTokenRefreshScheduler = (): (() => void) | null => {
   if (schedulerInterval) {
     console.log("⚠️ Token refresh scheduler already running");
@@ -302,7 +333,7 @@ export const startTokenRefreshScheduler = (): (() => void) | null => {
       if (!token) return;
 
       if (isTokenExpired(token, 5)) {
-        console.log("🔄 Token expiring soon, refreshing proactively...");
+        console.log("🔄 Token expiring soon, refreshing proactively…");
         await refreshBackendToken();
       }
     } catch (error) {
@@ -310,12 +341,8 @@ export const startTokenRefreshScheduler = (): (() => void) | null => {
     }
   };
 
-  // Check immediately
   checkAndRefreshToken();
-
-  // Then every 4 minutes
   schedulerInterval = setInterval(checkAndRefreshToken, 4 * 60 * 1000);
-
   console.log("✅ Token refresh scheduler started");
 
   return () => stopTokenRefreshScheduler();
@@ -329,7 +356,8 @@ export const stopTokenRefreshScheduler = () => {
   }
 };
 
-// Manual token refresh (useful for user‑triggered refresh)
+// ─── Manual refresh (user-triggered) ─────────────────────────────────────────
+
 export const manualTokenRefresh = async (): Promise<boolean> => {
   try {
     await refreshBackendToken();
@@ -340,15 +368,13 @@ export const manualTokenRefresh = async (): Promise<boolean> => {
   }
 };
 
-// Check if the current session is valid (token exists and not expired)
+// ─── Session validity check ───────────────────────────────────────────────────
+
 export const checkAuthSession = (): boolean => {
   if (typeof window === "undefined") return false;
 
   const token = getAccessToken();
-  if (!token) {
-    // No in‑memory token – we might still have a refresh cookie
-    return true; // optimistic – let the app attempt a refresh
-  }
+  if (!token) return true; // optimistic — may still have a valid refresh cookie
 
   if (isTokenExpired(token, 0)) {
     console.log("❌ Access token expired");
@@ -358,16 +384,15 @@ export const checkAuthSession = (): boolean => {
   return true;
 };
 
-// Clear all authentication data (logout)
+// ─── Clear all auth data (logout) ────────────────────────────────────────────
+
 export const clearAuthData = () => {
   if (typeof window === "undefined") return;
 
   stopTokenRefreshScheduler();
-
   setAccessToken(null);
   localStorage.removeItem("authData");
-  localStorage.removeItem("user"); // if you also store user separately
-
+  localStorage.removeItem("user");
   console.log("✅ Auth data cleared");
 };
 

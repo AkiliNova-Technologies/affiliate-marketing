@@ -1,19 +1,21 @@
 "use client";
-
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import AuthLayout from "@/layout/AuthLayout";
+import { useReduxAuth } from "@/hooks/useReduxAuth";
 
 export default function CreatePasswordPage() {
-  const router = useRouter();
-  const token = useSearchParams().get("token") ?? "";
+  const { activateVendorAccount, loading } = useReduxAuth();
+  const searchParams = useSearchParams();
+
+  const emailOtp = searchParams.get("emailOtp") ?? "";
+  const phoneOtp = searchParams.get("phoneOtp") ?? "";
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const passwordsMatch = password === confirm;
@@ -21,27 +23,25 @@ export default function CreatePasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isValid) {
-      if (!passwordsMatch) setError("Passwords do not match.");
-      else setError("Password must be at least 8 characters.");
-      return;
-    }
+
+    if (!passwordsMatch) { setError("Passwords do not match."); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!emailOtp || !phoneOtp) { setError("Invalid activation link. Please contact support."); return; }
+
     setError("");
-    setLoading(true);
-    // TODO: call your API with { token, password }
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    router.push("/auth/reset-success");
+    try {
+      await activateVendorAccount({ emailOtp, phoneOtp, password });
+    } catch {
+      // error toast already fired inside the hook
+    }
   }
 
   return (
     <AuthLayout>
       <h1 className="text-2xl font-semibold text-[#3b2f2f] mb-6 text-center">
-        Create a new password
+        Create your password
       </h1>
-
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Create Password */}
         <div className="space-y-1">
           <Label htmlFor="password" className="text-sm text-[#3b2f2f]">
             Create Password <span className="text-red-500">*</span>
@@ -56,7 +56,6 @@ export default function CreatePasswordPage() {
           />
         </div>
 
-        {/* Confirm Password */}
         <div className="space-y-1">
           <Label htmlFor="confirm" className="text-sm text-[#3b2f2f]">
             Confirm Password <span className="text-red-500">*</span>
@@ -86,7 +85,7 @@ export default function CreatePasswordPage() {
           className="w-full h-12 rounded-xl bg-[#1a1a1a] hover:bg-[#333] text-white
                      disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
-          {loading ? "Resetting…" : "Reset Password"}
+          {loading ? "Creating…" : "Create Password"}
         </Button>
       </form>
     </AuthLayout>

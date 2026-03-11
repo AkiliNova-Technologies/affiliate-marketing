@@ -11,6 +11,7 @@ export default function ForbiddenPage() {
 
   const homePath = (() => {
     switch (user?.userType) {
+      case "SUPER_ADMIN":
       case "ADMIN":
       case "STAFF":
         return "/admin/dashboard";

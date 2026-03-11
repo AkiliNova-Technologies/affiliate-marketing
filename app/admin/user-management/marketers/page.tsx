@@ -1077,7 +1077,7 @@ function MarketersListPage({
       <AppSidebar variant="sidebar" />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col p-4 lg:p-6">
+        <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7]">
           <h1 className="mb-5 text-2xl font-bold text-foreground">Marketers</h1>
 
           {/* Stat cards */}

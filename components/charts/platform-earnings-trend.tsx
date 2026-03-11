@@ -49,16 +49,17 @@ export default function PlatformEarningsTrend() {
             strokeDasharray="3 3"
             stroke="hsl(var(--border))"
             vertical={false}
+            
           />
           <XAxis
             dataKey="day"
             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            axisLine={false}
+            axisLine={true}
             tickLine={false}
           />
           <YAxis
             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            axisLine={false}
+            axisLine={true}
             tickLine={false}
             tickFormatter={(v) => `$${v / 1000}k`}
             width={45}

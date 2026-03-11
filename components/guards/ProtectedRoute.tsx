@@ -1,25 +1,3 @@
-// components/guards/ProtectedRoute.tsx
-//
-// Next.js App Router version.
-// ─────────────────────────────────────────────────────────────────────────────
-// PATTERN:
-//   • Server-side protection  → use middleware.ts  (best for SSR routes)
-//   • Client-side protection  → use these components (for client components
-//                               that need Redux state)
-//
-// USAGE IN LAYOUTS:
-//   // app/admin/layout.tsx
-//   import { AdminGuard } from "@/components/guards/ProtectedRoute";
-//   export default function AdminLayout({ children }) {
-//     return <AdminGuard>{children}</AdminGuard>;
-//   }
-//
-//   // app/vendor/layout.tsx
-//   import { VendorGuard } from "@/components/guards/ProtectedRoute";
-//   export default function VendorLayout({ children }) {
-//     return <VendorGuard>{children}</VendorGuard>;
-//   }
-
 "use client";
 
 import { useEffect, useRef } from "react";
@@ -33,7 +11,7 @@ import {
   type UserRole,
 } from "@/redux/slices/authSlice";
 
-// ─── Loading spinner ────────────────────────────────────────────────────────
+// ─── Loading spinner ─────────────────────────────────────────────────────────
 
 function AuthLoadingScreen() {
   return (
@@ -46,14 +24,21 @@ function AuthLoadingScreen() {
   );
 }
 
-// ─── Core guard ─────────────────────────────────────────────────────────────
+// ─── Role → dashboard mapping (single source of truth) ──────────────────────
+
+export const ROLE_DASHBOARDS: Record<string, string> = {
+  SUPER_ADMIN: "/admin/dashboard",
+  ADMIN:       "/admin/dashboard",
+  STAFF:       "/admin/dashboard",
+  VENDOR:      "/vendor/dashboard",
+  MARKETER:    "/marketer/dashboard",
+};
+
+// ─── Core guard ──────────────────────────────────────────────────────────────
 
 interface ProtectedRouteProps {
-  /** Roles allowed to view this content. Omit to allow any authenticated user. */
-  roles?: UserRole[];
-  /** Redirect destination when not authenticated. Default: /login */
+  roles?: string[];
   loginPath?: string;
-  /** Redirect destination when role check fails. Default: /403 */
   forbiddenPath?: string;
   children: React.ReactNode;
 }
@@ -71,7 +56,6 @@ export function ProtectedRoute({
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const initialLoading = useAppSelector(selectInitialLoading);
 
-  // Fire checkAuth once on mount to validate the token server-side
   const checkedRef = useRef(false);
   useEffect(() => {
     if (!checkedRef.current) {
@@ -80,7 +64,6 @@ export function ProtectedRoute({
     }
   }, [dispatch]);
 
-  // Wait for redux-persist rehydration + token check
   useEffect(() => {
     if (initialLoading) return;
 
@@ -89,24 +72,15 @@ export function ProtectedRoute({
       return;
     }
 
-    if (roles && roles.length > 0) {
-      const userRole = user.userType as UserRole;
-      if (!roles.includes(userRole)) {
-        router.replace(forbiddenPath);
-      }
+    if (roles && roles.length > 0 && !roles.includes(user.userType)) {
+      router.replace(forbiddenPath);
     }
   }, [initialLoading, isAuthenticated, user, roles, loginPath, forbiddenPath, router]);
 
-  // Show spinner while still loading
   if (initialLoading) return <AuthLoadingScreen />;
-
-  // Don't render children until we know auth is valid
   if (!isAuthenticated || !user) return <AuthLoadingScreen />;
-
-  // Role check failed — show spinner while redirect fires
-  if (roles && roles.length > 0) {
-    const userRole = user.userType as UserRole;
-    if (!roles.includes(userRole)) return <AuthLoadingScreen />;
+  if (roles && roles.length > 0 && !roles.includes(user.userType)) {
+    return <AuthLoadingScreen />;
   }
 
   return <>{children}</>;
@@ -114,16 +88,14 @@ export function ProtectedRoute({
 
 // ─── Convenience wrappers ────────────────────────────────────────────────────
 
-/** Protect /admin/* — ADMIN and STAFF only */
 export function AdminGuard({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute roles={["ADMIN", "STAFF"]}>
+    <ProtectedRoute roles={["SUPER_ADMIN", "ADMIN", "STAFF"]}>
       {children}
     </ProtectedRoute>
   );
 }
 
-/** Protect /vendor/* — VENDOR only */
 export function VendorGuard({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute roles={["VENDOR"]}>
@@ -132,7 +104,6 @@ export function VendorGuard({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Protect /marketer/* — MARKETER only */
 export function MarketerGuard({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute roles={["MARKETER"]}>
@@ -142,8 +113,7 @@ export function MarketerGuard({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Wrap auth pages (/login, /forgot-password, etc.)
- * Redirects already-authenticated users to their dashboard.
+ * Wrap auth pages — redirects already-authenticated users to their dashboard.
  */
 export function GuestOnlyGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -153,19 +123,10 @@ export function GuestOnlyGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (initialLoading || !isAuthenticated || !user) return;
-
-    const roleRedirects: Record<string, string> = {
-      ADMIN: "/admin/dashboard",
-      STAFF: "/admin/dashboard",
-      VENDOR: "/vendor/dashboard",
-      MARKETER: "/marketer/dashboard",
-    };
-    router.replace(roleRedirects[user.userType] ?? "/dashboard");
+    router.replace(ROLE_DASHBOARDS[user.userType] ?? "/dashboard");
   }, [initialLoading, isAuthenticated, user, router]);
 
   if (initialLoading) return <AuthLoadingScreen />;
-
-  // If authenticated, show spinner while redirect fires
   if (isAuthenticated && user) return <AuthLoadingScreen />;
 
   return <>{children}</>;

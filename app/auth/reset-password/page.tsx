@@ -1,19 +1,21 @@
 "use client";
-
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import AuthLayout from "@/layout/AuthLayout";
+import { useReduxAuth } from "@/hooks/useReduxAuth";
 
-export default function ResetasswordPage() {
-  const router = useRouter();
-  const token = useSearchParams().get("token") ?? "";
+export default function ResetPasswordPage() {
+  const { resetPasswordWithOTP, loading } = useReduxAuth();
+  const searchParams = useSearchParams();
+
+  const email = searchParams.get("email") ?? "";
+  const otp = searchParams.get("otp") ?? "";
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const passwordsMatch = password === confirm;
@@ -21,30 +23,28 @@ export default function ResetasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!isValid) {
-      if (!passwordsMatch) setError("Passwords do not match.");
-      else setError("Password must be at least 8 characters.");
-      return;
-    }
+
+    if (!passwordsMatch) { setError("Passwords do not match."); return; }
+    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
+    if (!email || !otp) { setError("Invalid reset link. Please request a new one."); return; }
+
     setError("");
-    setLoading(true);
-    // TODO: call your API with { token, password }
-    await new Promise((r) => setTimeout(r, 1000));
-    setLoading(false);
-    router.push("/auth/reset-success");
+    try {
+      await resetPasswordWithOTP(email, otp, password);
+    } catch {
+      // error toast already fired inside the hook
+    }
   }
 
   return (
     <AuthLayout>
       <h1 className="text-2xl font-semibold text-[#3b2f2f] mb-6 text-center">
-        Create a new password
+        Reset your password
       </h1>
-
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Create Password */}
         <div className="space-y-1">
           <Label htmlFor="password" className="text-sm text-[#3b2f2f]">
-            Create Password <span className="text-red-500">*</span>
+            New Password <span className="text-red-500">*</span>
           </Label>
           <Input
             id="password"
@@ -56,7 +56,6 @@ export default function ResetasswordPage() {
           />
         </div>
 
-        {/* Confirm Password */}
         <div className="space-y-1">
           <Label htmlFor="confirm" className="text-sm text-[#3b2f2f]">
             Confirm Password <span className="text-red-500">*</span>

@@ -6,7 +6,7 @@ export default function AdminRoute({
   children: React.ReactNode;
 }) {
   return (
-    <ProtectedRoute roles={["ADMIN", "STAFF"]}>
+    <ProtectedRoute roles={["SUPER_ADMIN", "ADMIN", "STAFF"]}>
       {children}
     </ProtectedRoute>
   );

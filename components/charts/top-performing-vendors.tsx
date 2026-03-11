@@ -20,11 +20,14 @@ const vendorsData = [
   { name: "Colaw", value: 28000 },
   { name: "Gempay", value: 48000 },
   { name: "Kampala Nites", value: 30000 },
+  { name: "Colaw", value: 28000 },
+  { name: "Gempay", value: 48000 },
+  { name: "Kampala Nites", value: 30000 },
 ]
 
 export default function TopPerformingVendors() {
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm">
+    <div className="rounded-xl border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-foreground">Top Performing Vendors</h3>
@@ -49,7 +52,7 @@ export default function TopPerformingVendors() {
         <BarChart
           data={vendorsData}
           margin={{ left: 0, right: 10, top: 5, bottom: 20 }}
-          barSize={40}
+          barSize={60}
         >
           <CartesianGrid
             strokeDasharray="3 3"
@@ -59,12 +62,12 @@ export default function TopPerformingVendors() {
           <XAxis
             dataKey="name"
             tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            axisLine={false}
+            axisLine={true}
             tickLine={false}
           />
           <YAxis
             tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            axisLine={false}
+            axisLine={true}
             tickLine={false}
             tickFormatter={(v) => `$${v / 1000}k`}
             width={45}

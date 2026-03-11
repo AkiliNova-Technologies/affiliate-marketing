@@ -26,7 +26,12 @@ import api, { saveAuthData, clearAuthData } from "@/utils/api";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-export type UserRole = "ADMIN" | "STAFF" | "VENDOR" | "MARKETER";
+export type UserRole =
+  | "SUPER_ADMIN"
+  | "ADMIN"
+  | "STAFF"
+  | "VENDOR"
+  | "MARKETER";
 
 export interface User {
   id: string;
@@ -112,22 +117,24 @@ export const handleApiError = (error: unknown): string => {
   return err.message || "An unexpected error occurred";
 };
 
-const mapApiResponseToUser = (data: any): User => ({
-  id: data.userId?.toString() || data.id || "",
-  userType: data.role || data.userType || "STAFF",
-  email: data.email || "",
-  firstName: data.firstName || "",
-  lastName: data.lastName || "",
-  isActive: data.isActive === true || data.emailVerified === true,
-  emailVerified: data.emailVerified || false,
-  forcePasswordChange: data.forcePasswordChange || false,
-  permissions: data.permissions || [],
-  roles: data.roles || [data.role || "STAFF"],
-  phoneNumber: data.phoneNumber,
-  accountStatus: data.accountStatus,
-  avatarUrl: data.avatarUrl,
-  createdAt: data.createdAt,
-});
+const mapApiResponseToUser = (data: any): User => {
+  return {
+    id: data.id || data.userId?.toString() || "",
+    userType: data.role || data.userType || "STAFF",
+    email: data.email || "",
+    firstName: data.firstName || "",
+    lastName: data.lastName || "",
+    isActive: data.status === "ACTIVE" || data.isActive === true,
+    emailVerified: data.isEmailVerified || data.emailVerified || false,
+    forcePasswordChange: data.forcePasswordChange || false,
+    permissions: data.permissions || [],
+    roles: data.roles || [data.role || "STAFF"],
+    phoneNumber: data.phone || data.phoneNumber,
+    accountStatus: data.status || data.accountStatus,
+    avatarUrl: data.avatarUrl,
+    createdAt: data.createdAt,
+  };
+};
 
 // ─── Thunks ────────────────────────────────────────────────────────────────────
 
@@ -136,15 +143,35 @@ export const login = createAsyncThunk(
   "auth/login",
   async (
     { email, password }: { email: string; password: string },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
-      const { data } = await api.post("/api/v1/auth/login", { email, password });
-      return { user: mapApiResponseToUser(data), tokens: data.tokens };
+      const { data } = await api.post("/api/v1/auth/login", {
+        email,
+        password,
+      });
+
+      if (data.accessToken) {
+        const { setAccessToken } = await import("@/utils/api");
+        setAccessToken(data.accessToken);
+      }
+
+      const { data: meData } = await api.get("/api/v1/auth/me");
+
+      return {
+        user: mapApiResponseToUser({
+          ...meData.user,
+          permissions: meData.permissions ?? data.user?.permissions ?? [],
+        }),
+        tokens: {
+          accessToken: data.accessToken,
+          expiresInSec: data.expiresIn,
+        },
+      };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/refresh */
@@ -158,7 +185,7 @@ export const refreshAccessToken = createAsyncThunk(
       clearAuthData();
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** GET /api/v1/auth/me */
@@ -167,13 +194,20 @@ export const checkAuth = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const { data } = await api.get("/api/v1/auth/me");
-      return { user: mapApiResponseToUser(data) };
+
+      return {
+        user: mapApiResponseToUser({
+          ...data.user,
+          permissions: data.permissions ?? [],
+        }),
+      };
     } catch (err) {
       const e = err as { response?: { status?: number } };
-      if (e.response?.status === 401) return rejectWithValue("Not authenticated");
+      if (e.response?.status === 401)
+        return rejectWithValue("Not authenticated");
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/logout */
@@ -187,7 +221,7 @@ export const logoutAsync = createAsyncThunk(
       clearAuthData();
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/logout-all */
@@ -200,7 +234,7 @@ export const logoutAll = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** GET /api/v1/auth/sessions */
@@ -213,7 +247,7 @@ export const fetchSessions = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** DELETE /api/v1/auth/sessions/{sessionId} */
@@ -226,7 +260,7 @@ export const revokeSession = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** GET /api/v1/auth/check */
@@ -234,7 +268,7 @@ export const checkUniqueness = createAsyncThunk(
   "auth/checkUniqueness",
   async (
     params: { email?: string; phone?: string; nickname?: string },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const { data } = await api.get("/api/v1/auth/check", { params });
@@ -242,7 +276,7 @@ export const checkUniqueness = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/forgot-password */
@@ -250,20 +284,26 @@ export const forgotPassword = createAsyncThunk(
   "auth/forgotPassword",
   async ({ email }: { email: string }, { rejectWithValue }) => {
     try {
-      const { data } = await api.post("/api/v1/auth/forgot-password", { email });
+      const { data } = await api.post("/api/v1/auth/forgot-password", {
+        email,
+      });
       return { email, message: data.message || "Password reset OTP sent!" };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/reset-password */
 export const resetPassword = createAsyncThunk(
   "auth/resetPassword",
   async (
-    { email, otp, newPassword }: { email: string; otp: string; newPassword: string },
-    { rejectWithValue }
+    {
+      email,
+      otp,
+      newPassword,
+    }: { email: string; otp: string; newPassword: string },
+    { rejectWithValue },
   ) => {
     try {
       const { data } = await api.post("/api/v1/auth/reset-password", {
@@ -275,15 +315,20 @@ export const resetPassword = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/activate-vendor */
 export const activateVendor = createAsyncThunk(
   "auth/activateVendor",
   async (
-    payload: { emailOtp: string; phoneOtp: string; password: string; [key: string]: any },
-    { rejectWithValue }
+    payload: {
+      emailOtp: string;
+      phoneOtp: string;
+      password: string;
+      [key: string]: any;
+    },
+    { rejectWithValue },
   ) => {
     try {
       const { data } = await api.post("/api/v1/auth/activate-vendor", payload);
@@ -291,7 +336,7 @@ export const activateVendor = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 // ─── Marketer Registration Thunks ─────────────────────────────────────────────
@@ -303,29 +348,35 @@ export const marketerInitEmail = createAsyncThunk(
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/init-email",
-        { email }
+        { email },
       );
       return { email, message: data.message };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/marketer-registration/verify-email */
 export const marketerVerifyEmail = createAsyncThunk(
   "auth/marketerVerifyEmail",
-  async ({ email, otp }: { email: string; otp: string }, { rejectWithValue }) => {
+  async (
+    { email, otp }: { email: string; otp: string },
+    { rejectWithValue },
+  ) => {
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/verify-email",
-        { email, otp }
+        { email, otp },
       );
-      return { registrationToken: data.registrationToken, message: data.message };
+      return {
+        registrationToken: data.registrationToken,
+        message: data.message,
+      };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/marketer-registration/resend-email-otp */
@@ -335,13 +386,13 @@ export const marketerResendEmailOtp = createAsyncThunk(
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/resend-email-otp",
-        { email }
+        { email },
       );
       return { message: data.message };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/marketer-registration/init-phone */
@@ -351,32 +402,37 @@ export const marketerInitPhone = createAsyncThunk(
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/init-phone",
-        { phoneNumber }
+        { phoneNumber },
       );
       return { message: data.message };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/auth/marketer-registration/finalize */
 export const marketerFinalize = createAsyncThunk(
   "auth/marketerFinalize",
   async (
-    payload: { password: string; firstName: string; lastName: string; [key: string]: any },
-    { rejectWithValue }
+    payload: {
+      password: string;
+      firstName: string;
+      lastName: string;
+      [key: string]: any;
+    },
+    { rejectWithValue },
   ) => {
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/finalize",
-        payload
+        payload,
       );
       return { user: mapApiResponseToUser(data), tokens: data.tokens };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 // ─── Slice ─────────────────────────────────────────────────────────────────────
@@ -518,7 +574,9 @@ const authSlice = createSlice({
         state.sessions.error = payload as string;
       })
       .addCase(revokeSession.fulfilled, (state, { payload }) => {
-        state.sessions.list = state.sessions.list.filter((s) => s.id !== payload);
+        state.sessions.list = state.sessions.list.filter(
+          (s) => s.id !== payload,
+        );
       });
 
     // ── forgotPassword ──
@@ -585,7 +643,8 @@ const authSlice = createSlice({
       })
       .addCase(marketerVerifyEmail.fulfilled, (state, { payload }) => {
         state.marketerRegistration.step = "email-verified";
-        state.marketerRegistration.registrationToken = payload.registrationToken;
+        state.marketerRegistration.registrationToken =
+          payload.registrationToken;
       })
       .addCase(marketerInitPhone.fulfilled, (state) => {
         state.marketerRegistration.step = "phone-added";
@@ -606,16 +665,27 @@ const authSlice = createSlice({
         }
       })
       .addMatcher(
-        (a) => a.type.startsWith("auth/marketer") && a.type.endsWith("/pending"),
-        (state) => { state.loading = true; state.error = null; }
+        (a) =>
+          a.type.startsWith("auth/marketer") && a.type.endsWith("/pending"),
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        },
       )
       .addMatcher(
-        (a) => a.type.startsWith("auth/marketer") && a.type.endsWith("/rejected"),
-        (state, action: any) => { state.loading = false; state.error = action.payload as string; }
+        (a) =>
+          a.type.startsWith("auth/marketer") && a.type.endsWith("/rejected"),
+        (state, action: any) => {
+          state.loading = false;
+          state.error = action.payload as string;
+        },
       )
       .addMatcher(
-        (a) => a.type.startsWith("auth/marketer") && a.type.endsWith("/fulfilled"),
-        (state) => { state.loading = false; }
+        (a) =>
+          a.type.startsWith("auth/marketer") && a.type.endsWith("/fulfilled"),
+        (state) => {
+          state.loading = false;
+        },
       );
   },
 });
@@ -632,11 +702,15 @@ export default authSlice.reducer;
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────
 export const selectCurrentUser = (s: { auth: AuthState }) => s.auth.user;
-export const selectIsAuthenticated = (s: { auth: AuthState }) => s.auth.isAuthenticated;
+export const selectIsAuthenticated = (s: { auth: AuthState }) =>
+  s.auth.isAuthenticated;
 export const selectAuthLoading = (s: { auth: AuthState }) => s.auth.loading;
 export const selectAuthError = (s: { auth: AuthState }) => s.auth.error;
-export const selectInitialLoading = (s: { auth: AuthState }) => s.auth.initialLoading;
+export const selectInitialLoading = (s: { auth: AuthState }) =>
+  s.auth.initialLoading;
 export const selectSessions = (s: { auth: AuthState }) => s.auth.sessions;
-export const selectMarketerRegistration = (s: { auth: AuthState }) => s.auth.marketerRegistration;
-export const selectPasswordReset = (s: { auth: AuthState }) => s.auth.passwordReset;
+export const selectMarketerRegistration = (s: { auth: AuthState }) =>
+  s.auth.marketerRegistration;
+export const selectPasswordReset = (s: { auth: AuthState }) =>
+  s.auth.passwordReset;
 export const selectUserRole = (s: { auth: AuthState }) => s.auth.user?.userType;

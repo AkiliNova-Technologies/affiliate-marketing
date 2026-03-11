@@ -11,6 +11,7 @@ import { SectionCards } from "@/components/section-cards"
 import { DataTable, StatusBadge, ViewAction } from "@/components/data-table"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import { useReduxAuth } from "@/hooks/useReduxAuth"
 
 // ─── Skeleton shown while charts load ─────────────────────────────────────────
 function ChartSkeleton({ className }: { className?: string }) {
@@ -55,16 +56,16 @@ const productApprovalData: ProductApprovalRow[] = [
 ]
 
 const productApprovalColumns: ColumnDef<ProductApprovalRow>[] = [
-  {
-    accessorKey: "id",
-    header: "Vendor",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">{row.original.id}.</span>
-    ),
-  },
+  // {
+  //   accessorKey: "id",
+  //   header: "Vendor",
+  //   cell: ({ row }) => (
+  //     <span className="text-muted-foreground text-sm">{row.original.id}.</span>
+  //   ),
+  // },
   {
     accessorKey: "vendor",
-    header: "",
+    header: "Vendor",
     cell: ({ row }) => (
       <span className="font-medium text-sm">{row.original.vendor}</span>
     ),
@@ -103,16 +104,16 @@ const campaignsData: CampaignRow[] = [
 ]
 
 const campaignsColumns: ColumnDef<CampaignRow>[] = [
-  {
-    accessorKey: "id",
-    header: "Marketer",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground text-sm">{row.original.id}.</span>
-    ),
-  },
+  // {
+  //   accessorKey: "id",
+  //   header: "Marketer",
+  //   cell: ({ row }) => (
+  //     <span className="text-muted-foreground text-sm">{row.original.id}.</span>
+  //   ),
+  // },
   {
     accessorKey: "marketer",
-    header: "",
+    header: "Marketer",
     cell: ({ row }) => (
       <span className="font-medium text-sm">{row.original.marketer}</span>
     ),
@@ -132,6 +133,7 @@ const campaignsColumns: ColumnDef<CampaignRow>[] = [
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const {user, loading} = useReduxAuth();
   return (
     <SidebarProvider
       style={
@@ -145,17 +147,17 @@ export default function DashboardPage() {
       <SidebarInset>
         <SiteHeader />
 
-        <div className="flex flex-1 flex-col gap-6 p-4 lg:p-6 bg-[#F7F7F7]">
+        <div className="flex flex-1 flex-col gap-8 p-4 lg:p-6 bg-[#F7F7F7]">
           {/* Greeting */}
           <h1 className="text-2xl font-bold text-foreground">
-            Hi John, here&apos;s how the system looks today
+            Hi {user?.firstName || "there"}, here&apos;s how the system looks today
           </h1>
 
           {/* Stat cards */}
           <SectionCards />
 
           {/* Product Approval + Sales by Category */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_320px]">
             {/* Product Approval */}
             <div className="rounded-xl border bg-card p-5">
               <div className="mb-4 flex items-start justify-between">
@@ -187,7 +189,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Earnings Trend + Campaigns Overview */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             {/* Platform Earnings Trend — client-only */}
             <PlatformEarningsTrend />
 

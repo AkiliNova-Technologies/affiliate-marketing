@@ -73,7 +73,7 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const signout = useCallback(async () => {
@@ -119,7 +119,7 @@ export function useReduxAuth() {
     (userData: Partial<User>) => {
       dispatch(updateUser(userData));
     },
-    [dispatch]
+    [dispatch],
   );
 
   const clearAuthError = useCallback(() => {
@@ -139,14 +139,14 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const resetPasswordWithOTP = useCallback(
     async (email: string, otp: string, newPassword: string) => {
       try {
         const result = await dispatch(
-          resetPassword({ email, otp, newPassword })
+          resetPassword({ email, otp, newPassword }),
         ).unwrap();
         toast.success(result.message || "Password reset successful!");
         router.push("/login");
@@ -156,7 +156,7 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch, router]
+    [dispatch, router],
   );
 
   // ── Vendor activation ───────────────────────────────────────────────────────
@@ -177,7 +177,7 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   // ── Sessions ────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ export function useReduxAuth() {
         toast.error(err || "Failed to revoke session");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   // ── Uniqueness check ────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   // ── Marketer registration ───────────────────────────────────────────────────
@@ -228,14 +228,14 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const marketerStep2VerifyEmail = useCallback(
     async (email: string, otp: string) => {
       try {
         const result = await dispatch(
-          marketerVerifyEmail({ email, otp })
+          marketerVerifyEmail({ email, otp }),
         ).unwrap();
         toast.success(result.message || "Email verified!");
         return result;
@@ -244,14 +244,14 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const marketerResendOTP = useCallback(
     async (email: string) => {
       try {
         const result = await dispatch(
-          marketerResendEmailOtp({ email })
+          marketerResendEmailOtp({ email }),
         ).unwrap();
         toast.success(result.message || "OTP resent!");
         return result;
@@ -260,13 +260,15 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const marketerStep3InitPhone = useCallback(
     async (phoneNumber: string) => {
       try {
-        const result = await dispatch(marketerInitPhone({ phoneNumber })).unwrap();
+        const result = await dispatch(
+          marketerInitPhone({ phoneNumber }),
+        ).unwrap();
         toast.success(result.message || "OTP sent to your phone!");
         return result;
       } catch (err: any) {
@@ -274,7 +276,7 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const marketerStep4Finalize = useCallback(
@@ -294,7 +296,7 @@ export function useReduxAuth() {
         throw err;
       }
     },
-    [dispatch, router]
+    [dispatch, router],
   );
 
   const clearMarketerFlow = useCallback(() => {
@@ -305,31 +307,34 @@ export function useReduxAuth() {
 
   const hasRole = useCallback(
     (role: string) => !!user?.roles?.includes(role),
-    [user]
+    [user],
   );
 
   const hasPermission = useCallback(
     (permission: string) => !!user?.permissions?.includes(permission),
-    [user]
+    [user],
   );
 
   const isUserType = useCallback(
     (type: string) => user?.userType === type,
-    [user]
+    [user],
   );
 
   const isAdmin = useCallback(
-    () => user?.userType === "ADMIN" || user?.userType === "STAFF",
-    [user]
+    () => user?.userType === "SUPER_ADMIN" ||user?.userType === "ADMIN" || user?.userType === "STAFF",
+    [user],
   );
 
   const isVendor = useCallback(() => user?.userType === "VENDOR", [user]);
   const isMarketer = useCallback(() => user?.userType === "MARKETER", [user]);
 
   const getFullName = useCallback(() => {
-    if (user?.firstName && user?.lastName)
-      return `${user.firstName} ${user.lastName}`.trim();
-    return user?.email || "";
+    if (!user) return "";
+    const first = user.firstName?.trim() ?? "";
+    const last = user.lastName?.trim() ?? "";
+    if (first && last) return `${first} ${last}`;
+    if (first) return first;
+    return user.email.split("@")[0] ?? user.email;
   }, [user]);
 
   return {

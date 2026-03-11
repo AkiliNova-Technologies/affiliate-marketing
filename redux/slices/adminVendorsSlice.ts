@@ -11,16 +11,30 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "@/utils/api";
 import { handleApiError } from "./authSlice";
 
+export interface VendorProfile {
+  id: string;
+  type: string;
+  businessName: string | null;
+  businessDescription: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Vendor {
   id: string;
+  role?: string;
+  email: string;
+  status: "PENDING_ACTIVATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED" | string;
   firstName: string;
   lastName: string;
-  email: string;
+  phone?: string;
   phoneNumber?: string;
-  businessName?: string;
-  status: "PENDING" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
   createdAt: string;
   updatedAt?: string;
+  profile?: VendorProfile;
+  businessName?: string;
   productsCount?: number;
   revenue?: number;
   [key: string]: any;
@@ -55,9 +69,11 @@ export const fetchAdminVendors = createAsyncThunk(
   ) => {
     try {
       const { data } = await api.get("/api/v1/admin/vendors", { params });
+      // API returns { vendors: [...], total?, count? } or array directly
+      const vendors = (data.vendors || data.data || data) as Vendor[];
       return {
-        vendors: (data.data || data.vendors || data) as Vendor[],
-        total: data.total || data.count || 0,
+        vendors,
+        total: data.total ?? data.count ?? vendors.length,
         page: params.page || 1,
       };
     } catch (err) {
@@ -79,16 +95,18 @@ export const fetchAdminVendorById = createAsyncThunk(
   }
 );
 
-/** POST /api/v1/admin/vendors/registration */
+/** POST /api/v1/admin/vendors/registration
+ *  Body: { email, contactFirstName, contactLastName, businessName, contactPhone? }
+ */
 export const registerVendor = createAsyncThunk(
   "adminVendors/register",
   async (
     payload: {
       email: string;
-      firstName: string;
-      lastName: string;
-      phoneNumber?: string;
+      contactFirstName: string;
+      contactLastName: string;
       businessName?: string;
+      contactPhone?: string;
       [key: string]: any;
     },
     { rejectWithValue }
@@ -115,11 +133,26 @@ export const resendVendorInvite = createAsyncThunk(
   }
 );
 
-/** PATCH /api/v1/admin/vendors/{id} */
+/** PATCH /api/v1/admin/vendors/{id}
+ *  Body uses contactFirstName / contactLastName / contactPhone to match registration API
+ */
 export const updateAdminVendor = createAsyncThunk(
   "adminVendors/update",
   async (
-    { id, payload }: { id: string; payload: Partial<Vendor> },
+    {
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: {
+        businessName?: string;
+        contactFirstName?: string;
+        contactLastName?: string;
+        contactPhone?: string;
+        email?: string;
+        [key: string]: any;
+      };
+    },
     { rejectWithValue }
   ) => {
     try {
@@ -147,7 +180,7 @@ export const updateVendorStatus = createAsyncThunk(
   }
 );
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
+// ─── Helper ───────────────────────────────────────────────────────────────────
 
 const upsertVendor = (vendors: Vendor[], updated: Vendor) => {
   const idx = vendors.findIndex((v) => v.id === updated.id);
@@ -155,7 +188,7 @@ const upsertVendor = (vendors: Vendor[], updated: Vendor) => {
   else vendors.unshift(updated);
 };
 
-// ─── Slice ─────────────────────────────────────────────────────────────────────
+// ─── Slice ────────────────────────────────────────────────────────────────────
 
 const adminVendorsSlice = createSlice({
   name: "adminVendors",
@@ -166,19 +199,18 @@ const adminVendorsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // fetchAll
       .addCase(fetchAdminVendors.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchAdminVendors.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.vendors = payload.vendors;
-        state.total = payload.total;
-        state.page = payload.page;
+        state.total   = payload.total;
+        state.page    = payload.page;
       })
       .addCase(fetchAdminVendors.rejected, (state, { payload }) => {
         state.loading = false;
         state.error = payload as string;
       })
-      // fetchById
+
       .addCase(fetchAdminVendorById.pending, (state) => { state.loading = true; state.error = null; })
       .addCase(fetchAdminVendorById.fulfilled, (state, { payload }) => {
         state.loading = false;
@@ -188,7 +220,7 @@ const adminVendorsSlice = createSlice({
         state.loading = false;
         state.error = payload as string;
       })
-      // register
+
       .addCase(registerVendor.pending, (state) => { state.actionLoading = true; state.error = null; })
       .addCase(registerVendor.fulfilled, (state, { payload }) => {
         state.actionLoading = false;
@@ -199,14 +231,14 @@ const adminVendorsSlice = createSlice({
         state.actionLoading = false;
         state.error = payload as string;
       })
-      // resendInvite
+
       .addCase(resendVendorInvite.pending, (state) => { state.actionLoading = true; })
       .addCase(resendVendorInvite.fulfilled, (state) => { state.actionLoading = false; })
       .addCase(resendVendorInvite.rejected, (state, { payload }) => {
         state.actionLoading = false;
         state.error = payload as string;
       })
-      // update
+
       .addCase(updateAdminVendor.pending, (state) => { state.actionLoading = true; state.error = null; })
       .addCase(updateAdminVendor.fulfilled, (state, { payload }) => {
         state.actionLoading = false;
@@ -217,7 +249,7 @@ const adminVendorsSlice = createSlice({
         state.actionLoading = false;
         state.error = payload as string;
       })
-      // updateStatus
+
       .addCase(updateVendorStatus.pending, (state) => { state.actionLoading = true; state.error = null; })
       .addCase(updateVendorStatus.fulfilled, (state, { payload }) => {
         state.actionLoading = false;
@@ -234,10 +266,10 @@ const adminVendorsSlice = createSlice({
 export const { clearSelectedVendor, clearError } = adminVendorsSlice.actions;
 export default adminVendorsSlice.reducer;
 
-// ─── Selectors ─────────────────────────────────────────────────────────────────
-export const selectAdminVendors = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.vendors;
-export const selectSelectedVendor = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.selectedVendor;
-export const selectAdminVendorsLoading = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.loading;
-export const selectAdminVendorsError = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.error;
-export const selectAdminVendorsTotal = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.total;
+// ─── Selectors ────────────────────────────────────────────────────────────────
+export const selectAdminVendors         = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.vendors;
+export const selectSelectedVendor       = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.selectedVendor;
+export const selectAdminVendorsLoading  = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.loading;
+export const selectAdminVendorsError    = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.error;
+export const selectAdminVendorsTotal    = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.total;
 export const selectAdminVendorsActionLoading = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.actionLoading;
