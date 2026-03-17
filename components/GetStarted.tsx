@@ -4,12 +4,14 @@ import StepIndicator from "./StepIndicator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface GetStartedProps {
   onNext: (data: { firstName: string; lastName: string; email: string }) => void;
+  loading?: boolean;
 }
 
-export default function GetStarted({ onNext }: GetStartedProps) {
+export default function GetStarted({ onNext, loading = false }: GetStartedProps) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -35,6 +37,7 @@ export default function GetStarted({ onNext }: GetStartedProps) {
             placeholder="Your First name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
+            disabled={loading}
             className="border-orange-200 focus-visible:ring-orange-400 bg-white"
           />
         </div>
@@ -46,6 +49,7 @@ export default function GetStarted({ onNext }: GetStartedProps) {
             placeholder="Your last name"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
+            disabled={loading}
             className="border-orange-200 focus-visible:ring-orange-400 bg-white"
           />
         </div>
@@ -60,16 +64,17 @@ export default function GetStarted({ onNext }: GetStartedProps) {
           placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          disabled={loading}
           className="border-orange-200 focus-visible:ring-orange-400 bg-white"
         />
       </div>
 
       <Button
         onClick={handleSubmit}
-        disabled={!isValid}
+        disabled={!isValid || loading}
         className="w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md py-3 font-medium transition-colors"
       >
-        Next
+        {loading ? <Loader2 className="size-4 animate-spin" /> : "Next"}
       </Button>
     </div>
   );

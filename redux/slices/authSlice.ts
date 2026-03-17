@@ -63,6 +63,9 @@ export interface AuthSession {
 interface MarketerRegistrationState {
   step: "idle" | "email-sent" | "email-verified" | "phone-added" | "complete";
   email: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  registrationFlowId: string | null;
   registrationToken: string | null;
 }
 
@@ -91,7 +94,14 @@ const initialState: AuthState = {
   initialLoading: true,
   error: null,
   sessions: { list: [], loading: false, error: null },
-  marketerRegistration: { step: "idle", email: null, registrationToken: null },
+  marketerRegistration: {
+    step: "idle",
+    email: null,
+    firstName: null,
+    lastName: null,
+    registrationFlowId: null,
+    registrationToken: null,
+  },
   passwordReset: { pending: false, email: null },
 };
 
@@ -344,13 +354,26 @@ export const activateVendor = createAsyncThunk(
 /** POST /api/v1/auth/marketer-registration/init-email */
 export const marketerInitEmail = createAsyncThunk(
   "auth/marketerInitEmail",
-  async ({ email }: { email: string }, { rejectWithValue }) => {
+  async (
+    {
+      email,
+      firstName,
+      lastName,
+    }: { email: string; firstName: string; lastName: string },
+    { rejectWithValue },
+  ) => {
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/init-email",
-        { email },
+        { email, firstName, lastName },
       );
-      return { email, message: data.message };
+      return {
+        email,
+        firstName,
+        lastName,
+        registrationFlowId: data.registrationFlowId,
+        message: data.message,
+      };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
@@ -361,13 +384,13 @@ export const marketerInitEmail = createAsyncThunk(
 export const marketerVerifyEmail = createAsyncThunk(
   "auth/marketerVerifyEmail",
   async (
-    { email, otp }: { email: string; otp: string },
+    { registrationFlowId, otp }: { registrationFlowId: string; otp: string },
     { rejectWithValue },
   ) => {
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/verify-email",
-        { email, otp },
+        { registrationFlowId, otp },
       );
       return {
         registrationToken: data.registrationToken,
@@ -398,11 +421,17 @@ export const marketerResendEmailOtp = createAsyncThunk(
 /** POST /api/v1/auth/marketer-registration/init-phone */
 export const marketerInitPhone = createAsyncThunk(
   "auth/marketerInitPhone",
-  async ({ phoneNumber }: { phoneNumber: string }, { rejectWithValue }) => {
+  async (
+    {
+      registrationFlowId,
+      phone,
+    }: { registrationFlowId: string; phone: string },
+    { rejectWithValue },
+  ) => {
     try {
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/init-phone",
-        { phoneNumber },
+        { registrationFlowId, phone },
       );
       return { message: data.message };
     } catch (err) {
@@ -416,10 +445,9 @@ export const marketerFinalize = createAsyncThunk(
   "auth/marketerFinalize",
   async (
     payload: {
+      registrationFlowId: string;
       password: string;
-      firstName: string;
-      lastName: string;
-      [key: string]: any;
+      nickname: string;
     },
     { rejectWithValue },
   ) => {
@@ -640,6 +668,10 @@ const authSlice = createSlice({
       .addCase(marketerInitEmail.fulfilled, (state, { payload }) => {
         state.marketerRegistration.step = "email-sent";
         state.marketerRegistration.email = payload.email;
+        state.marketerRegistration.firstName = payload.firstName;
+        state.marketerRegistration.lastName = payload.lastName;
+        state.marketerRegistration.registrationFlowId =
+          payload.registrationFlowId;
       })
       .addCase(marketerVerifyEmail.fulfilled, (state, { payload }) => {
         state.marketerRegistration.step = "email-verified";

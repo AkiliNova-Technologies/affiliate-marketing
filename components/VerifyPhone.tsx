@@ -3,17 +3,28 @@ import React, { useState, useEffect } from "react";
 import StepIndicator from "./StepIndicator";
 import OtpInput from "./OtpInput";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 interface VerifyPhoneProps {
   phone: string;
   countryCode: string;
   onNext: (otp: string) => void;
   onBack: () => void;
+  onResend?: () => Promise<void>;
+  loading?: boolean;
 }
 
-export default function VerifyPhone({ phone, countryCode, onNext, onBack }: VerifyPhoneProps) {
+export default function VerifyPhone({
+  phone,
+  countryCode,
+  onNext,
+  onBack,
+  onResend,
+  loading = false,
+}: VerifyPhoneProps) {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
   const [resendTimer, setResendTimer] = useState(30);
+  const [resending, setResending] = useState(false);
 
   const isComplete = otp.every((d) => d !== "");
 
@@ -23,10 +34,16 @@ export default function VerifyPhone({ phone, countryCode, onNext, onBack }: Veri
     return () => clearTimeout(t);
   }, [resendTimer]);
 
-  const handleResend = () => {
-    if (resendTimer > 0) return;
-    setResendTimer(30);
-    setOtp(Array(6).fill(""));
+  const handleResend = async () => {
+    if (resendTimer > 0 || resending) return;
+    setResending(true);
+    try {
+      await onResend?.();
+      setOtp(Array(6).fill(""));
+      setResendTimer(30);
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -39,23 +56,25 @@ export default function VerifyPhone({ phone, countryCode, onNext, onBack }: Veri
       </p>
 
       <div className="mb-6">
-        <OtpInput value={otp} onChange={setOtp} />
+        <OtpInput value={otp} onChange={setOtp} disabled={loading} />
       </div>
 
       <div className="flex justify-between items-center mb-6">
         <Button
           variant="outline"
           onClick={onBack}
+          disabled={loading}
           className="rounded-md border-gray-400 text-gray-700 bg-transparent hover:bg-gray-50"
         >
           Back
         </Button>
         <Button
           onClick={() => onNext(otp.join(""))}
-          disabled={!isComplete}
+        //   disabled={!isComplete || loading}
+          disabled={loading}
           className="bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-md px-8 font-medium transition-colors"
         >
-          Continue
+          {loading ? <Loader2 className="size-4 animate-spin" /> : "Continue"}
         </Button>
       </div>
 
@@ -63,10 +82,14 @@ export default function VerifyPhone({ phone, countryCode, onNext, onBack }: Veri
         Didn&apos;t get the code?{" "}
         <button
           onClick={handleResend}
-          disabled={resendTimer > 0}
+          disabled={resendTimer > 0 || resending || loading}
           className="font-bold underline text-gray-700 disabled:text-gray-400 disabled:cursor-not-allowed"
         >
-          {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend"}
+          {resending
+            ? "Resending…"
+            : resendTimer > 0
+            ? `Resend in ${resendTimer}s`
+            : "Resend"}
         </button>
       </p>
     </div>

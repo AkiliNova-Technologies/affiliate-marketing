@@ -4,17 +4,9 @@
 import * as React from "react";
 import { useState, useCallback, useEffect } from "react";
 import {
-  IconSearch,
-  IconFilter,
-  IconSortDescending,
-  IconEye,
-  IconPlus,
   IconArrowLeft,
   IconSend,
   IconArrowRight,
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronDown,
   IconX,
   IconEdit,
   IconCheck,
@@ -28,7 +20,9 @@ import {
   IconBan,
   IconUsers,
   IconClock,
+  IconPlus,
 } from "@tabler/icons-react";
+import { type ColumnDef } from "@tanstack/react-table";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -46,10 +40,9 @@ import {
 import { useReduxAdmin } from "@/hooks/useReduxAdmin";
 import type { Vendor } from "@/redux/slices/adminVendorsSlice";
 import PhoneField from "@/components/PhoneField";
+import { DataTable, StatusBadge, ViewAction } from "@/components/data-table";
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
-// API statuses: "PENDING" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED"
-// UI labels:    "Active" | "Pending activation" | "Suspended" | "Deactivated" | "Deleted"
 
 type DisplayStatus =
   | "Active"
@@ -60,13 +53,13 @@ type DisplayStatus =
 
 function toDisplayStatus(apiStatus: string): DisplayStatus {
   const map: Record<string, DisplayStatus> = {
-    ACTIVE:              "Active",
-    PENDING:             "Pending activation",
-    PENDING_ACTIVATION:  "Pending activation",
-    SUSPENDED:           "Suspended",
-    DEACTIVATED:         "Deactivated",
-    INACTIVE:            "Deactivated",
-    DELETED:             "Deleted",
+    ACTIVE: "Active",
+    PENDING: "Pending activation",
+    PENDING_ACTIVATION: "Pending activation",
+    SUSPENDED: "Suspended",
+    DEACTIVATED: "Deactivated",
+    INACTIVE: "Deactivated",
+    DELETED: "Deleted",
   };
   return map[apiStatus?.toUpperCase()] ?? "Pending activation";
 }
@@ -96,10 +89,12 @@ function getDateJoined(v: Vendor): string {
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider
-      style={{
-        "--sidebar-width": "calc(var(--spacing) * 64)",
-        "--header-height": "calc(var(--spacing) * 14)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 64)",
+          "--header-height": "calc(var(--spacing) * 14)",
+        } as React.CSSProperties
+      }
     >
       <AppSidebar variant="sidebar" />
       <SidebarInset>
@@ -121,8 +116,11 @@ function Spinner({ className }: { className?: string }) {
     >
       <circle
         className="opacity-25"
-        cx="12" cy="12" r="10"
-        stroke="currentColor" strokeWidth="4"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
       />
       <path
         className="opacity-75"
@@ -133,27 +131,14 @@ function Spinner({ className }: { className?: string }) {
   );
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────────────
-
-function VendorStatusBadge({ status }: { status: DisplayStatus }) {
-  const styles: Record<DisplayStatus, string> = {
-    "Active":             "border border-green-500 text-green-700 bg-green-50",
-    "Pending activation": "border border-amber-400 text-amber-700 bg-amber-50",
-    "Suspended":          "border-2 border-gray-800 text-gray-800 bg-white font-semibold",
-    "Deactivated":        "border border-gray-300 text-gray-400 bg-gray-50",
-    "Deleted":            "text-red-500 bg-transparent border-none",
-  };
-  return (
-    <span className={cn("inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium", styles[status])}>
-      {status}
-    </span>
-  );
-}
-
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
 function StatCard({
-  title, value, change, icon, gradient,
+  title,
+  value,
+  change,
+  icon,
+  gradient,
 }: {
   title: string;
   value: string | number;
@@ -162,11 +147,35 @@ function StatCard({
   gradient: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-xl p-5 text-white", gradient)}>
-      <svg className="absolute inset-0 h-full w-full opacity-20" viewBox="0 0 200 100" preserveAspectRatio="none">
-        <path d="M0 60 Q50 30 100 55 T200 45"  fill="none" stroke="white" strokeWidth="1.5" />
-        <path d="M0 75 Q60 45 120 65 T200 60"  fill="none" stroke="white" strokeWidth="1" />
-        <path d="M0 90 Q70 60 130 80 T200 75"  fill="none" stroke="white" strokeWidth="0.75" />
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl p-5 text-white",
+        gradient,
+      )}
+    >
+      <svg
+        className="absolute inset-0 h-full w-full opacity-20"
+        viewBox="0 0 200 100"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0 60 Q50 30 100 55 T200 45"
+          fill="none"
+          stroke="white"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M0 75 Q60 45 120 65 T200 60"
+          fill="none"
+          stroke="white"
+          strokeWidth="1"
+        />
+        <path
+          d="M0 90 Q70 60 130 80 T200 75"
+          fill="none"
+          stroke="white"
+          strokeWidth="0.75"
+        />
       </svg>
       <div className="relative flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -188,46 +197,7 @@ function StatCard({
   );
 }
 
-// ─── Table skeleton rows ──────────────────────────────────────────────────────
-
-function SkeletonRow() {
-  return (
-    <tr className="border-b animate-pulse">
-      <td className="px-5 py-4"><div className="size-4 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4">
-        <div className="h-3 w-32 rounded bg-gray-200 mb-2" />
-        <div className="h-2.5 w-44 rounded bg-gray-100" />
-      </td>
-      <td className="px-4 py-4"><div className="h-3 w-28 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-20 rounded bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-5 w-24 rounded-full bg-gray-200" /></td>
-      <td className="px-4 py-4"><div className="h-3 w-10 rounded bg-gray-200" /></td>
-    </tr>
-  );
-}
-
 // ─── Illustrations ────────────────────────────────────────────────────────────
-
-function TelescopeIllustration() {
-  return (
-    <svg viewBox="0 0 200 200" className="mx-auto w-52 h-52" fill="none">
-      <circle cx="100" cy="100" r="82" fill="#f3f4f6" />
-      <g transform="rotate(-30, 100, 110)">
-        <rect x="55" y="100" width="72" height="22" rx="7" fill="#1a1a1a" />
-        <rect x="48" y="96" width="24" height="18" rx="4" fill="#333" />
-        <rect x="123" y="104" width="10" height="10" rx="2" fill="#555" />
-      </g>
-      <line x1="100" y1="138" x2="72"  y2="178" stroke="#1a1a1a" strokeWidth="3"   strokeLinecap="round" />
-      <line x1="100" y1="138" x2="128" y2="178" stroke="#1a1a1a" strokeWidth="3"   strokeLinecap="round" />
-      <line x1="100" y1="138" x2="100" y2="178" stroke="#1a1a1a" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="70"  cy="65" r="24"  fill="#1a1a1a" />
-      <text x="63" y="74" fontSize="24" fill="white" fontFamily="serif" fontWeight="bold">?</text>
-      <circle cx="148" cy="55" r="3"   fill="#1a1a1a" />
-      <circle cx="160" cy="76" r="2.2" fill="#1a1a1a" />
-      <circle cx="136" cy="70" r="1.8" fill="#1a1a1a" />
-    </svg>
-  );
-}
 
 function EnvelopeIllustration() {
   return (
@@ -244,7 +214,9 @@ function EnvelopeIllustration() {
 // ─── Action banner ────────────────────────────────────────────────────────────
 
 function VendorActionBanner({
-  message, subtitle, onDismiss,
+  message,
+  subtitle,
+  onDismiss,
 }: {
   message: string;
   subtitle: string;
@@ -257,7 +229,10 @@ function VendorActionBanner({
         <p className="text-sm font-semibold text-blue-900">{message}</p>
         <p className="mt-0.5 text-xs text-blue-700">{subtitle}</p>
       </div>
-      <button onClick={onDismiss} className="shrink-0 text-blue-400 hover:text-blue-600 transition-colors">
+      <button
+        onClick={onDismiss}
+        className="shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+      >
         <IconX className="size-4" />
       </button>
     </div>
@@ -267,7 +242,9 @@ function VendorActionBanner({
 // ─── Suspend modal ────────────────────────────────────────────────────────────
 
 function SuspendModal({
-  onClose, onConfirm, isLoading,
+  onClose,
+  onConfirm,
+  isLoading,
 }: {
   onClose: () => void;
   onConfirm: (reason: string) => void;
@@ -295,7 +272,8 @@ function SuspendModal({
             Reason for suspension
           </label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Provide a brief reason to why you're suspending this vendor's account
+            Provide a brief reason to why you're suspending this vendor's
+            account
           </p>
           <textarea
             value={reason}
@@ -310,10 +288,20 @@ function SuspendModal({
             disabled={!ok || isLoading}
             className={cn(
               "flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold text-white transition-all",
-              ok && !isLoading ? "bg-red-500 hover:bg-red-600" : "bg-red-300 cursor-not-allowed pointer-events-none",
+              ok && !isLoading
+                ? "bg-red-500 hover:bg-red-600"
+                : "bg-red-300 cursor-not-allowed pointer-events-none",
             )}
           >
-            {isLoading ? <><Spinner /> Suspending…</> : <>Suspend Vendor <IconBan className="size-4" /></>}
+            {isLoading ? (
+              <>
+                <Spinner /> Suspending…
+              </>
+            ) : (
+              <>
+                Suspend Vendor <IconBan className="size-4" />
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -323,20 +311,26 @@ function SuspendModal({
 
 // ─── Vendor drawer ────────────────────────────────────────────────────────────
 
-// Which status-change actions are available per current display status
 const STATUS_ACTIONS: Record<
   DisplayStatus,
   Array<{ label: string; apiStatus: "ACTIVE" | "SUSPENDED"; danger?: boolean }>
 > = {
-  "Active":             [{ label: "Suspend",  apiStatus: "SUSPENDED", danger: true }],
-  "Pending activation": [{ label: "Activate", apiStatus: "ACTIVE" }, { label: "Suspend", apiStatus: "SUSPENDED", danger: true }],
-  "Suspended":          [{ label: "Activate", apiStatus: "ACTIVE" }],
-  "Deactivated":        [{ label: "Activate", apiStatus: "ACTIVE" }],
-  "Deleted":            [],
+  Active: [{ label: "Suspend", apiStatus: "SUSPENDED", danger: true }],
+  "Pending activation": [
+    { label: "Activate", apiStatus: "ACTIVE" },
+    { label: "Suspend", apiStatus: "SUSPENDED", danger: true },
+  ],
+  Suspended: [{ label: "Activate", apiStatus: "ACTIVE" }],
+  Deactivated: [{ label: "Activate", apiStatus: "ACTIVE" }],
+  Deleted: [],
 };
 
 function VendorDrawer({
-  vendor, onClose, onStatusChanged, onResendOtp, onEdit,
+  vendor,
+  onClose,
+  onStatusChanged,
+  onResendOtp,
+  onEdit,
 }: {
   vendor: Vendor;
   onClose: () => void;
@@ -349,7 +343,6 @@ function VendorDrawer({
 
   const displayStatus = toDisplayStatus(vendor.status);
   const actions = STATUS_ACTIONS[displayStatus] ?? [];
-  // Show Resend OTP for vendors who haven't yet activated
   const showOtp = displayStatus === "Pending activation";
   const vendorName = getBusinessName(vendor) || getContactName(vendor);
 
@@ -361,10 +354,16 @@ function VendorDrawer({
     }
   };
 
-  const doStatusChange = async (apiStatus: "ACTIVE" | "SUSPENDED", _reason?: string) => {
+  const doStatusChange = async (
+    apiStatus: "ACTIVE" | "SUSPENDED",
+    _reason?: string,
+  ) => {
     try {
       await changeVendorStatus(vendor.id, apiStatus);
-      onStatusChanged(vendorName, apiStatus === "ACTIVE" ? "Active" : "Suspended");
+      onStatusChanged(
+        vendorName,
+        apiStatus === "ACTIVE" ? "Active" : "Suspended",
+      );
       onClose();
     } catch {
       // toast already fired inside changeVendorStatus
@@ -373,13 +372,10 @@ function VendorDrawer({
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
         onClick={onClose}
       />
-
-      {/* Panel */}
       <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden">
           <button
@@ -391,18 +387,18 @@ function VendorDrawer({
 
           <div className="p-8 pt-16 pb-16 max-h-[90vh] overflow-y-auto">
             <div className="flex gap-6 mb-6">
-              {/* Logo / avatar */}
               <div className="shrink-0 size-[140px] rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
                 <span className="text-4xl font-bold text-gray-300 select-none">
                   {vendorName[0]?.toUpperCase() ?? "V"}
                 </span>
               </div>
 
-              {/* Details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold text-foreground">{vendorName}</h2>
+                    <h2 className="text-xl font-bold text-foreground">
+                      {vendorName}
+                    </h2>
                     <p className="mt-0.5 text-sm font-medium text-[#F97316]">
                       Joined {getDateJoined(vendor)}
                     </p>
@@ -411,35 +407,61 @@ function VendorDrawer({
 
                 <div className="border-t border-gray-100 my-4" />
 
-                {/* Info rows */}
                 <div className="grid grid-cols-1 gap-x-8 gap-y-3 mb-4">
                   {[
-                    { Icon: IconUser,         label: "Contact Person", value: getContactName(vendor) },
-                    { Icon: IconPhone,        label: "Phone number",   value: getPhone(vendor) },
-                    { Icon: IconMail,         label: "Email Address",  value: vendor.email || "—" },
-                    { Icon: IconCircleDashed, label: "Status",         value: <VendorStatusBadge status={displayStatus} /> },
+                    {
+                      Icon: IconUser,
+                      label: "Contact Person",
+                      value: getContactName(vendor),
+                    },
+                    {
+                      Icon: IconPhone,
+                      label: "Phone number",
+                      value: getPhone(vendor),
+                    },
+                    {
+                      Icon: IconMail,
+                      label: "Email Address",
+                      value: vendor.email || "—",
+                    },
+                    {
+                      Icon: IconCircleDashed,
+                      label: "Status",
+                      value: <StatusBadge status={displayStatus} />,
+                    },
                   ].map(({ Icon, label, value }) => (
-                    <div key={label} className="grid grid-cols-2 items-start gap-2.5">
+                    <div
+                      key={label}
+                      className="grid grid-cols-2 items-start gap-2.5"
+                    >
                       <div className="flex items-center gap-1">
                         <Icon className="size-4 shrink-0 text-gray-400 mt-0.5" />
                         <p className="text-xs text-muted-foreground">{label}</p>
                       </div>
-                      <div className="text-sm text-foreground mt-0.5">{value}</div>
+                      <div className="text-sm text-foreground mt-0.5">
+                        {value}
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Revenue card */}
                 <div className="mb-6 rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-medium text-muted-foreground">Net Revenue</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Net Revenue
+                    </p>
                     <div className="flex items-center justify-center rounded-lg bg-[#F97316] p-1.5">
                       <IconCurrencyDollar className="size-4 text-white" />
                     </div>
                   </div>
                   <div className="mt-2 flex items-end justify-between">
                     <p className="text-2xl font-bold text-foreground">
-                      ${(vendor.revenue ?? vendor.productsCount ?? 0).toLocaleString()}
+                      $
+                      {(
+                        vendor.revenue ??
+                        vendor.productsCount ??
+                        0
+                      ).toLocaleString()}
                     </p>
                     <div className="flex items-center gap-1 text-sm font-semibold text-green-600">
                       <IconTrendingUp className="size-4" />
@@ -448,10 +470,12 @@ function VendorDrawer({
                   </div>
                 </div>
 
-                {/* Action row */}
                 <div className="flex items-center gap-3 flex-wrap">
                   <Button
-                    onClick={() => { onEdit(vendor); onClose(); }}
+                    onClick={() => {
+                      onEdit(vendor);
+                      onClose();
+                    }}
                     className="h-10 gap-2 rounded-md bg-[#F97316] px-5 text-sm font-semibold text-white hover:bg-[#F97316]/90"
                   >
                     Edit <IconEdit className="size-4" />
@@ -459,18 +483,26 @@ function VendorDrawer({
 
                   {actions.length > 0 && (
                     <Select
-                      onValueChange={(v) => handleSelectAction(v as "ACTIVE" | "SUSPENDED")}
+                      onValueChange={(v) =>
+                        handleSelectAction(v as "ACTIVE" | "SUSPENDED")
+                      }
                       disabled={vendorsActionLoading}
                     >
                       <SelectTrigger className="w-[160px] min-h-10 rounded-md border-gray-200 text-sm font-semibold">
-                        <SelectValue placeholder={vendorsActionLoading ? "Updating…" : "Change Status"} />
+                        <SelectValue
+                          placeholder={
+                            vendorsActionLoading ? "Updating…" : "Change Status"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {actions.map((a) => (
                           <SelectItem
                             key={a.apiStatus}
                             value={a.apiStatus}
-                            className={cn(a.danger && "text-red-500 font-medium")}
+                            className={cn(
+                              a.danger && "text-red-500 font-medium",
+                            )}
                           >
                             {a.label}
                           </SelectItem>
@@ -506,18 +538,7 @@ function VendorDrawer({
   );
 }
 
-// ─── Country codes ────────────────────────────────────────────────────────────
-
-const COUNTRY_CODES = [
-  { code: "256", label: "🇺🇬 UG" },
-  { code: "254", label: "🇰🇪 KE" },
-  { code: "255", label: "🇹🇿 TZ" },
-  { code: "250", label: "🇷🇼 RW" },
-  { code: "1",   label: "🇺🇸 US" },
-  { code: "44",  label: "🇬🇧 GB" },
-];
-
-// ─── Shared stepper bar ───────────────────────────────────────────────────────
+// ─── Stepper bar ──────────────────────────────────────────────────────────────
 
 function StepBar({ step }: { step: 1 | 2 }) {
   return (
@@ -527,17 +548,23 @@ function StepBar({ step }: { step: 1 | 2 }) {
       </p>
       <div className="flex gap-2">
         <div className="h-1.5 flex-1 max-w-[130px] rounded-full bg-[#F97316]" />
-        <div className={cn("h-1.5 flex-1 max-w-[130px] rounded-full transition-all", step === 2 ? "bg-[#F97316]" : "bg-gray-200")} />
+        <div
+          className={cn(
+            "h-1.5 flex-1 max-w-[130px] rounded-full transition-all",
+            step === 2 ? "bg-[#F97316]" : "bg-gray-200",
+          )}
+        />
       </div>
     </div>
   );
 }
 
-
 // ─── Edit vendor form ─────────────────────────────────────────────────────────
 
 function EditVendorForm({
-  vendor, onClose, onSaved,
+  vendor,
+  onClose,
+  onSaved,
 }: {
   vendor: Vendor;
   onClose: () => void;
@@ -545,15 +572,18 @@ function EditVendorForm({
 }) {
   const { editVendor, vendorsActionLoading } = useReduxAdmin();
 
-  const [step, setStep]         = useState<1 | 2>(1);
-  const [bn, setBn]             = useState(vendor.profile?.businessName || vendor.businessName || "");
-  const [fn, setFn]             = useState(vendor.firstName ?? "");
-  const [ln, setLn]             = useState(vendor.lastName ?? "");
-  const [email, setEmail]       = useState(vendor.email ?? "");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [bn, setBn] = useState(
+    vendor.profile?.businessName || vendor.businessName || "",
+  );
+  const [fn, setFn] = useState(vendor.firstName ?? "");
+  const [ln, setLn] = useState(vendor.lastName ?? "");
+  const [email, setEmail] = useState(vendor.email ?? "");
   const [emailErr, setEmailErr] = useState("");
-  // Strip leading country-code digits for display
-  const [phone, setPhone]       = useState((vendor.phone || vendor.phoneNumber || "").replace(/^\+\d{1,3}/, ""));
-  const [cc, setCc]             = useState("256");
+  const [phone, setPhone] = useState(
+    (vendor.phone || vendor.phoneNumber || "").replace(/^\+\d{1,3}/, ""),
+  );
+  const [cc, setCc] = useState("256");
 
   const s1ok = bn.trim().length > 0;
   const s2ok = !!(fn.trim() && ln.trim() && email.trim() && !emailErr);
@@ -570,11 +600,11 @@ function EditVendorForm({
     if (!s2ok) return;
     try {
       await editVendor(vendor.id, {
-        businessName:      bn.trim() || undefined,
-        contactFirstName:  fn.trim(),
-        contactLastName:   ln.trim(),
-        email:             email.trim(),
-        contactPhone:      phone.trim() ? `+${cc}${phone.trim()}` : undefined,
+        businessName: bn.trim() || undefined,
+        contactFirstName: fn.trim(),
+        contactLastName: ln.trim(),
+        email: email.trim(),
+        contactPhone: phone.trim() ? `+${cc}${phone.trim()}` : undefined,
       });
       onSaved();
     } catch {
@@ -585,9 +615,11 @@ function EditVendorForm({
   return (
     <PageShell>
       <div className="flex flex-1 flex-col p-4 lg:p-6">
-        {/* Header */}
         <div className="mb-6 flex items-center gap-2">
-          <button onClick={onClose} className="text-foreground hover:text-[#F97316] transition-colors">
+          <button
+            onClick={onClose}
+            className="text-foreground hover:text-[#F97316] transition-colors"
+          >
             <IconArrowLeft className="size-5" />
           </button>
           <h1 className="text-2xl font-bold text-foreground">Edit Vendor</h1>
@@ -596,10 +628,11 @@ function EditVendorForm({
         <div className="w-full rounded-xl border bg-card p-6">
           <StepBar step={step} />
 
-          {/* Step 1 — Business Details */}
           {step === 1 && (
             <>
-              <h2 className="mb-5 text-xl font-semibold text-foreground">Business Details</h2>
+              <h2 className="mb-5 text-xl font-semibold text-foreground">
+                Business Details
+              </h2>
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
                   Business Name <span className="text-[#F97316]">*</span>
@@ -613,72 +646,120 @@ function EditVendorForm({
             </>
           )}
 
-          {/* Step 2 — Contact Person */}
           {step === 2 && (
             <>
-              <h2 className="mb-5 text-xl font-semibold text-foreground">Contact Person</h2>
+              <h2 className="mb-5 text-xl font-semibold text-foreground">
+                Contact Person
+              </h2>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-foreground">
                     First Name <span className="text-[#F97316]">*</span>
                   </label>
-                  <Input value={fn} onChange={(e) => setFn(e.target.value)} className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]" />
+                  <Input
+                    value={fn}
+                    onChange={(e) => setFn(e.target.value)}
+                    className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]"
+                  />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-foreground">
                     Last Name <span className="text-[#F97316]">*</span>
                   </label>
-                  <Input value={ln} onChange={(e) => setLn(e.target.value)} className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]" />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">
-                    Email{" "}
-                    {emailErr
-                      ? <span className="ml-1 font-normal text-red-500 text-xs">* {emailErr}</span>
-                      : <span className="text-[#F97316]">*</span>
-                    }
-                  </label>
                   <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr(""); }}
-                    onBlur={validateEmail}
-                    className={cn("h-11 rounded-lg focus-visible:ring-[#F97316]", emailErr ? "border-red-500 focus-visible:ring-red-400" : "border-gray-300")}
+                    value={ln}
+                    onChange={(e) => setLn(e.target.value)}
+                    className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]"
                   />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-foreground">
-                    Phone <span className="text-muted-foreground font-normal">(optional)</span>
+                    Email{" "}
+                    {emailErr ? (
+                      <span className="ml-1 font-normal text-red-500 text-xs">
+                        * {emailErr}
+                      </span>
+                    ) : (
+                      <span className="text-[#F97316]">*</span>
+                    )}
                   </label>
-                  <PhoneField phone={phone} setPhone={setPhone} cc={cc} setCc={setCc} />
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailErr) setEmailErr("");
+                    }}
+                    onBlur={validateEmail}
+                    className={cn(
+                      "h-11 rounded-lg focus-visible:ring-[#F97316]",
+                      emailErr
+                        ? "border-red-500 focus-visible:ring-red-400"
+                        : "border-gray-300",
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-foreground">
+                    Phone{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </label>
+                  <PhoneField
+                    phone={phone}
+                    setPhone={setPhone}
+                    cc={cc}
+                    setCc={setCc}
+                  />
                 </div>
               </div>
             </>
           )}
         </div>
 
-        {/* CTAs */}
         <div className="mt-6 flex justify-end">
           {step === 1 && (
             <Button
               onClick={() => setStep(2)}
               disabled={!s1ok}
-              className={cn("h-11 px-7 gap-2 rounded-xl font-semibold", s1ok ? "bg-[#F97316] text-white hover:bg-[#F97316]/90" : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none")}
+              className={cn(
+                "h-11 px-7 gap-2 rounded-xl font-semibold",
+                s1ok
+                  ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
+                  : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
+              )}
             >
               Next <IconArrowRight className="size-4" />
             </Button>
           )}
           {step === 2 && (
             <div className="flex items-center gap-3">
-              <button onClick={() => setStep(1)} className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
+              <button
+                onClick={() => setStep(1)}
+                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
                 <IconArrowLeft className="size-4" /> Back
               </button>
               <Button
                 onClick={handleSave}
                 disabled={!s2ok || vendorsActionLoading}
-                className={cn("h-11 px-7 gap-2 rounded-xl font-semibold", s2ok && !vendorsActionLoading ? "bg-[#F97316] text-white hover:bg-[#F97316]/90" : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none")}
+                className={cn(
+                  "h-11 px-7 gap-2 rounded-xl font-semibold",
+                  s2ok && !vendorsActionLoading
+                    ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
+                    : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
+                )}
               >
-                {vendorsActionLoading ? <><Spinner /> Saving…</> : <>Save Changes <IconCheck className="size-4" /></>}
+                {vendorsActionLoading ? (
+                  <>
+                    <Spinner /> Saving…
+                  </>
+                ) : (
+                  <>
+                    Save Changes <IconCheck className="size-4" />
+                  </>
+                )}
               </Button>
             </div>
           )}
@@ -691,21 +772,22 @@ function EditVendorForm({
 // ─── Create vendor form ───────────────────────────────────────────────────────
 
 function CreateVendorForm({
-  onClose, onSuccess,
+  onClose,
+  onSuccess,
 }: {
   onClose: () => void;
   onSuccess: (email: string) => void;
 }) {
   const { addVendor, vendorsActionLoading } = useReduxAdmin();
 
-  const [step, setStep]         = useState<1 | 2>(1);
-  const [bn, setBn]             = useState("");
-  const [fn, setFn]             = useState("");
-  const [ln, setLn]             = useState("");
-  const [email, setEmail]       = useState("");
+  const [step, setStep] = useState<1 | 2>(1);
+  const [bn, setBn] = useState("");
+  const [fn, setFn] = useState("");
+  const [ln, setLn] = useState("");
+  const [email, setEmail] = useState("");
   const [emailErr, setEmailErr] = useState("");
-  const [phone, setPhone]       = useState("");
-  const [cc, setCc]             = useState("256");
+  const [phone, setPhone] = useState("");
+  const [cc, setCc] = useState("256");
 
   const s1ok = bn.trim().length > 0;
   const s2ok = !!(fn.trim() && ln.trim() && email.trim() && !emailErr);
@@ -722,11 +804,11 @@ function CreateVendorForm({
     if (!s2ok) return;
     try {
       await addVendor({
-        businessName:      bn.trim(),
-        contactFirstName:  fn.trim(),
-        contactLastName:   ln.trim(),
-        email:             email.trim(),
-        contactPhone:      phone.trim() ? `+${cc}${phone.trim()}` : undefined,
+        businessName: bn.trim(),
+        contactFirstName: fn.trim(),
+        contactLastName: ln.trim(),
+        email: email.trim(),
+        contactPhone: phone.trim() ? `+${cc}${phone.trim()}` : undefined,
       });
       onSuccess(email.trim());
     } catch {
@@ -738,7 +820,10 @@ function CreateVendorForm({
     <PageShell>
       <div className="flex flex-1 flex-col p-4 lg:p-6">
         <div className="mb-6 flex items-center gap-2">
-          <button onClick={onClose} className="text-foreground hover:text-[#F97316] transition-colors">
+          <button
+            onClick={onClose}
+            className="text-foreground hover:text-[#F97316] transition-colors"
+          >
             <IconArrowLeft className="size-5" />
           </button>
           <h1 className="text-2xl font-bold text-foreground">Create Vendor</h1>
@@ -754,7 +839,11 @@ function CreateVendorForm({
                 <label className="mb-1.5 block text-sm font-medium">
                   Business Name <span className="text-[#F97316]">*</span>
                 </label>
-                <Input value={bn} onChange={(e) => setBn(e.target.value)} className="h-11 w-full rounded-lg border-gray-300 focus-visible:ring-[#F97316]" />
+                <Input
+                  value={bn}
+                  onChange={(e) => setBn(e.target.value)}
+                  className="h-11 w-full rounded-lg border-gray-300 focus-visible:ring-[#F97316]"
+                />
               </div>
             </>
           )}
@@ -764,34 +853,65 @@ function CreateVendorForm({
               <h2 className="mb-5 text-xl font-semibold">Contact Person</h2>
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1.5 block text-sm font-medium">First Name <span className="text-[#F97316]">*</span></label>
-                  <Input value={fn} onChange={(e) => setFn(e.target.value)} className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]" />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium">Last Name <span className="text-[#F97316]">*</span></label>
-                  <Input value={ln} onChange={(e) => setLn(e.target.value)} className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]" />
-                </div>
-                <div>
                   <label className="mb-1.5 block text-sm font-medium">
-                    Email{" "}
-                    {emailErr
-                      ? <span className="ml-1 font-normal text-red-500 text-xs">* {emailErr}</span>
-                      : <span className="text-[#F97316]">*</span>
-                    }
+                    First Name <span className="text-[#F97316]">*</span>
                   </label>
                   <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr(""); }}
-                    onBlur={validateEmail}
-                    className={cn("h-11 rounded-lg focus-visible:ring-[#F97316]", emailErr ? "border-red-500 focus-visible:ring-red-400" : "border-gray-300")}
+                    value={fn}
+                    onChange={(e) => setFn(e.target.value)}
+                    className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]"
                   />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium">
-                    Phone <span className="text-muted-foreground font-normal">(optional)</span>
+                    Last Name <span className="text-[#F97316]">*</span>
                   </label>
-                  <PhoneField phone={phone} setPhone={setPhone} cc={cc} setCc={setCc} />
+                  <Input
+                    value={ln}
+                    onChange={(e) => setLn(e.target.value)}
+                    className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Email{" "}
+                    {emailErr ? (
+                      <span className="ml-1 font-normal text-red-500 text-xs">
+                        * {emailErr}
+                      </span>
+                    ) : (
+                      <span className="text-[#F97316]">*</span>
+                    )}
+                  </label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (emailErr) setEmailErr("");
+                    }}
+                    onBlur={validateEmail}
+                    className={cn(
+                      "h-11 rounded-lg focus-visible:ring-[#F97316]",
+                      emailErr
+                        ? "border-red-500 focus-visible:ring-red-400"
+                        : "border-gray-300",
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Phone{" "}
+                    <span className="text-muted-foreground font-normal">
+                      (optional)
+                    </span>
+                  </label>
+                  <PhoneField
+                    phone={phone}
+                    setPhone={setPhone}
+                    cc={cc}
+                    setCc={setCc}
+                  />
                 </div>
               </div>
             </>
@@ -803,7 +923,12 @@ function CreateVendorForm({
             <Button
               onClick={() => setStep(2)}
               disabled={!s1ok}
-              className={cn("h-11 px-7 gap-2 rounded-xl font-semibold", s1ok ? "bg-[#F97316] text-white hover:bg-[#F97316]/90" : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none")}
+              className={cn(
+                "h-11 px-7 gap-2 rounded-xl font-semibold",
+                s1ok
+                  ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
+                  : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
+              )}
             >
               Next <IconArrowRight className="size-4" />
             </Button>
@@ -812,14 +937,39 @@ function CreateVendorForm({
             <Button
               onClick={submit}
               disabled={!s2ok || vendorsActionLoading}
-              className={cn("h-11 px-7 gap-2 rounded-xl font-semibold", s2ok && !vendorsActionLoading ? "bg-[#F97316] text-white hover:bg-[#F97316]/90" : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none")}
+              className={cn(
+                "h-11 px-7 gap-2 rounded-xl font-semibold",
+                s2ok && !vendorsActionLoading
+                  ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
+                  : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
+              )}
             >
-              {vendorsActionLoading ? <><Spinner /> Sending…</> : <>Invite Vendor <IconSend className="size-4" /></>}
+              {vendorsActionLoading ? (
+                <>
+                  <Spinner /> Sending…
+                </>
+              ) : (
+                <>
+                  Invite Vendor <IconSend className="size-4" />
+                </>
+              )}
             </Button>
           )}
         </div>
       </div>
     </PageShell>
+  );
+}
+
+function TelescopeIllustration() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 p-6 h-62 w-62 border rounded-full bg-[#EFEFEF]">
+      <img
+        src="/emptystate.png"
+        alt=""
+        className="w-full h-full object-cover"
+      />
+    </div>
   );
 }
 
@@ -852,58 +1002,118 @@ function EmailSentScreen({ email, onOk }: { email: string; onOk: () => void }) {
 const PAGE_SIZE = 20;
 
 function VendorsListPage({
-  onCreateVendor, onEdit, showEditSuccessBanner, onDismissEditBanner,
+  onCreateVendor,
+  onEdit,
+  showEditSuccessBanner,
+  onDismissEditBanner,
 }: {
   onCreateVendor: () => void;
   onEdit: (vendor: Vendor) => void;
   showEditSuccessBanner?: boolean;
   onDismissEditBanner?: () => void;
 }) {
-  const {
-    vendors,
-    vendorsLoading,
-    vendorsTotal,
-    loadVendors,
-    resendInvite,
-  } = useReduxAdmin();
+  const { vendors, vendorsLoading, vendorsTotal, loadVendors, resendInvite } =
+    useReduxAdmin();
 
-  const [search, setSearch]               = useState("");
-  const [currentPage, setCurrentPage]     = useState(1);
-  const [selected, setSelected]           = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
-  const [banner, setBanner]               = useState<{ message: string; subtitle: string } | null>(null);
+  const [banner, setBanner] = useState<{
+    message: string;
+    subtitle: string;
+  } | null>(null);
+
+  // Debounce search by 400ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 400);
+    return () => clearTimeout(t);
+  }, [search]);
 
   // Fetch whenever page or search changes
   useEffect(() => {
-    loadVendors({ page: currentPage, limit: PAGE_SIZE, search: search || undefined });
+    loadVendors({
+      page: currentPage,
+      limit: PAGE_SIZE,
+      search: search || undefined,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, search]);
 
-  const totalPages = Math.max(1, Math.ceil(vendorsTotal / PAGE_SIZE));
-  const isEmpty    = !vendorsLoading && vendors.length === 0;
-
-  // Counts derived from current page of Redux data (server returns filtered data)
-  const activeCount  = vendors.filter((v) => v.status === "ACTIVE").length;
+  const activeCount = vendors.filter((v) => v.status === "ACTIVE").length;
   const pendingCount = vendors.filter((v) => v.status === "PENDING").length;
   const totalRevenue = vendors.reduce((sum, v) => sum + (v.revenue ?? 0), 0);
 
-  const toggleSelect = (id: string) =>
-    setSelected((prev) => {
-      const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
-      return n;
-    });
-
-  const handleStatusChanged = (vendorName: string, newStatus: DisplayStatus) => {
+  const handleStatusChanged = (
+    vendorName: string,
+    newStatus: DisplayStatus,
+  ) => {
     setSelectedVendor(null);
     setBanner(
       newStatus === "Suspended"
-        ? { message: "Vendor account has been suspended", subtitle: `The reason for suspending "${vendorName}" has been sent to their email` }
-        : { message: "Vendor account has been activated", subtitle: `"${vendorName}" can now access the platform` },
+        ? {
+            message: "Vendor account has been suspended",
+            subtitle: `The reason for suspending "${vendorName}" has been sent to their email`,
+          }
+        : {
+            message: "Vendor account has been activated",
+            subtitle: `"${vendorName}" can now access the platform`,
+          },
     );
-    // Refresh list so the status change is reflected
-    loadVendors({ page: currentPage, limit: PAGE_SIZE, search: search || undefined });
+    loadVendors({
+      page: currentPage,
+      limit: PAGE_SIZE,
+      search: search || undefined,
+    });
   };
+
+  // ── Column definitions ──────────────────────────────────────────────────────
+  const columns: ColumnDef<Vendor>[] = [
+    {
+      id: "contactPerson",
+      accessorFn: (v) => getContactName(v),
+      header: "Contact Person",
+      cell: ({ row }) => (
+        <div>
+          <p className="font-medium text-foreground">
+            {getContactName(row.original)}
+          </p>
+          <p className="text-xs text-muted-foreground">{row.original.email}</p>
+        </div>
+      ),
+    },
+    {
+      id: "businessName",
+      accessorFn: (v) => getBusinessName(v),
+      header: "Business Name",
+      cell: ({ row }) => (
+        <span className="text-foreground">{getBusinessName(row.original)}</span>
+      ),
+    },
+    {
+      id: "dateJoined",
+      accessorFn: (v) => getDateJoined(v),
+      header: "Date Joined",
+      cell: ({ row }) => (
+        <span className="text-foreground">{getDateJoined(row.original)}</span>
+      ),
+    },
+    {
+      id: "status",
+      accessorFn: (v) => v.status,
+      header: "Status",
+      cell: ({ row }) => (
+        <StatusBadge status={toDisplayStatus(row.original.status)} />
+      ),
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => (
+        <ViewAction onClick={() => setSelectedVendor(row.original)} />
+      ),
+    },
+  ];
 
   const stats = [
     {
@@ -916,8 +1126,15 @@ function VendorsListPage({
       title: "Active Vendors",
       value: activeCount,
       icon: (
-        <svg className="size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" /><path d="M8 12l3 3 5-5" />
+        <svg
+          className="size-5 text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M8 12l3 3 5-5" />
         </svg>
       ),
       gradient: "bg-gradient-to-br from-[#f08020] to-[#d97015]",
@@ -943,19 +1160,31 @@ function VendorsListPage({
 
         {/* Stat cards */}
         <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {stats.map((s) => <StatCard key={s.title} {...s} />)}
+          {stats.map((s) => (
+            <StatCard key={s.title} {...s} />
+          ))}
         </div>
 
         {/* Edit-success banner */}
         {showEditSuccessBanner && (
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-green-200 border-l-4 border-l-green-500 bg-green-50 px-5 py-3.5">
-            <svg className="size-5 shrink-0 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="10" /><path d="M8 12l3 3 5-5" />
+            <svg
+              className="size-5 shrink-0 text-green-600"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M8 12l3 3 5-5" />
             </svg>
             <p className="flex-1 text-sm font-semibold text-green-800">
               Vendor details have been updated successfully
             </p>
-            <button onClick={onDismissEditBanner} className="text-green-400 hover:text-green-600 transition-colors">
+            <button
+              onClick={onDismissEditBanner}
+              className="text-green-400 hover:text-green-600 transition-colors"
+            >
               <IconX className="size-4" />
             </button>
           </div>
@@ -970,175 +1199,52 @@ function VendorsListPage({
           />
         )}
 
-        {/* Table card */}
-        <div className="rounded-xl border bg-card">
-          {/* Table header */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4">
-            <div>
-              <h3 className="font-semibold text-foreground">All Vendors</h3>
-              <p className="text-xs text-muted-foreground">Manage and monitor all vendors on the platform</p>
-            </div>
-            <Button
-              onClick={onCreateVendor}
-              className="h-9 gap-1.5 rounded-lg bg-[#F97316] px-4 text-sm font-semibold text-white hover:bg-[#F97316]/90"
-            >
-              <IconPlus className="size-3.5" /> Create Vendor
-            </Button>
-          </div>
-
-          {/* Search + filters */}
-          <div className="flex flex-wrap items-center gap-3 border-b px-5 py-3">
-            <div className="relative w-full max-w-xs">
-              <IconSearch className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-                placeholder="Search vendors…"
-                className="h-9 pl-9 text-sm border-gray-200 focus-visible:ring-[#F97316]"
-              />
-            </div>
-            <div className="ml-auto flex items-center gap-3">
-              <button className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium hover:border-[#F97316] transition-colors">
-                <IconFilter className="size-3.5" /> Filters
-              </button>
-              <span className="text-xs text-muted-foreground">
-                Sort by: <span className="font-medium text-[#F97316]">Date Joined</span>
-                <span className="mx-1.5 text-gray-300">|</span>
-                <IconSortDescending className="inline size-3.5" />
-              </span>
-            </div>
-          </div>
-
-          {/* Table body */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-muted/20 text-left text-muted-foreground">
-                  <th className="w-10 px-5 py-3">
-                    <input type="checkbox" className="rounded border-gray-300 accent-[#F97316]" />
-                  </th>
-                  <th className="px-4 py-3 font-medium">Contact Person</th>
-                  <th className="px-4 py-3 font-medium">Business Name</th>
-                  <th className="px-4 py-3 font-medium">Date Joined</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vendorsLoading
-                  ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-                  : isEmpty
-                  ? (
-                    <tr>
-                      <td colSpan={6} className="py-20 text-center">
-                        <TelescopeIllustration />
-                        <h3 className="mt-3 text-lg font-semibold text-foreground">
-                          {search ? "No vendors match your search" : "No vendors yet!"}
-                        </h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {search ? "Try a different term or clear the search" : "Add the first vendor using the button above"}
-                        </p>
-                        {!search && (
-                          <Button
-                            onClick={onCreateVendor}
-                            className="mt-5 h-11 min-w-[180px] rounded-xl bg-[#1a1a1a] text-sm font-semibold text-white hover:bg-[#333]"
-                          >
-                            Add Vendor
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                  : vendors.map((v) => (
-                    <tr key={v.id} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
-                      <td className="px-5 py-3.5">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(v.id)}
-                          onChange={() => toggleSelect(v.id)}
-                          className="rounded border-gray-300 accent-[#F97316]"
-                        />
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <p className="font-medium text-foreground">{getContactName(v)}</p>
-                        <p className="text-xs text-muted-foreground">{v.email}</p>
-                      </td>
-                      <td className="px-4 py-3.5 text-foreground">{getBusinessName(v)}</td>
-                      <td className="px-4 py-3.5 text-foreground">{getDateJoined(v)}</td>
-                      <td className="px-4 py-3.5">
-                        <VendorStatusBadge status={toDisplayStatus(v.status)} />
-                      </td>
-                      <td className="px-4 py-3.5">
-                        <button
-                          onClick={() => setSelectedVendor(v)}
-                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <IconEye className="size-3.5" /> View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between border-t px-5 py-3">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1 || vendorsLoading}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
-            >
-              <IconChevronLeft className="size-3.5" /> Previous
-            </button>
-
-            <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(totalPages, 3) }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setCurrentPage(p)}
-                  className={cn(
-                    "flex size-7 items-center justify-center rounded text-xs font-medium transition-colors",
-                    p === currentPage ? "bg-[#F97316] text-white" : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-              {totalPages > 3 && (
-                <>
-                  <span className="px-1 text-xs text-muted-foreground">…</span>
-                  <button
-                    onClick={() => setCurrentPage(totalPages)}
-                    className="flex size-7 items-center justify-center rounded text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    {totalPages}
-                  </button>
-                </>
-              )}
-            </div>
-
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages || vendorsLoading}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
-            >
-              Next <IconChevronRight className="size-3.5" />
-            </button>
-          </div>
-
-          {vendorsTotal > 0 && (
-            <p className="px-5 pb-3 text-right text-xs text-muted-foreground">
-              Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, vendorsTotal)}
-              {" – "}
-              {Math.min(currentPage * PAGE_SIZE, vendorsTotal)} of {vendorsTotal}
-            </p>
-          )}
+        {/* ── DataTable ── */}
+        <div className="rounded-xl">
+          <DataTable
+            columns={columns}
+            data={vendors}
+            title="All Vendors"
+            description="Manage and monitor all vendors on the platform"
+            headerAction={
+              <Button
+                onClick={onCreateVendor}
+                className="h-9 gap-1.5 rounded-lg bg-[#F97316] px-4 text-sm font-semibold text-white hover:bg-[#F97316]/90"
+              >
+                <IconPlus className="size-3.5" /> Create Vendor
+              </Button>
+            }
+            searchColumn="contactPerson"
+            searchPlaceholder="Search vendors…"
+            showFilters
+            showSort
+            sortLabel="Date Joined"
+            showSelection
+            showPagination
+            pageSize={PAGE_SIZE}
+            total={vendorsTotal}
+            page={currentPage}
+            onPageChange={(p) => setCurrentPage(p)}
+            emptyState={
+              <div className="flex flex-col items-center gap-3 py-8">
+                <TelescopeIllustration />
+                <h3 className="mt-1 text-lg font-semibold text-foreground">
+                  {debouncedSearch
+                    ? "No marketers match your search"
+                    : "No marketers yet!"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {debouncedSearch
+                    ? "Try a different term or clear the search"
+                    : "No list of marketers found here"}
+                </p>
+              </div>
+            }
+          />
         </div>
       </div>
 
-      {/* Vendor drawer — fixed above everything */}
+      {/* Vendor drawer */}
       {selectedVendor && (
         <VendorDrawer
           vendor={selectedVendor}
@@ -1157,8 +1263,8 @@ function VendorsListPage({
 type View = "list" | "create" | "success" | "edit" | "edit-success";
 
 export default function VendorsPage() {
-  const [view, setView]                   = useState<View>("list");
-  const [successEmail, setSuccessEmail]   = useState("");
+  const [view, setView] = useState<View>("list");
+  const [successEmail, setSuccessEmail] = useState("");
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
   const handleCreateSuccess = useCallback((email: string) => {
@@ -1177,13 +1283,26 @@ export default function VendorsPage() {
   }, []);
 
   if (view === "create")
-    return <CreateVendorForm onClose={() => setView("list")} onSuccess={handleCreateSuccess} />;
+    return (
+      <CreateVendorForm
+        onClose={() => setView("list")}
+        onSuccess={handleCreateSuccess}
+      />
+    );
 
   if (view === "success")
-    return <EmailSentScreen email={successEmail} onOk={() => setView("list")} />;
+    return (
+      <EmailSentScreen email={successEmail} onOk={() => setView("list")} />
+    );
 
   if (view === "edit" && editingVendor)
-    return <EditVendorForm vendor={editingVendor} onClose={() => setView("list")} onSaved={handleEditSaved} />;
+    return (
+      <EditVendorForm
+        vendor={editingVendor}
+        onClose={() => setView("list")}
+        onSaved={handleEditSaved}
+      />
+    );
 
   return (
     <VendorsListPage

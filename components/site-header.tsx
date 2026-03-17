@@ -5,7 +5,7 @@ import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,8 @@ import { ROLE_DASHBOARDS } from "@/components/guards/ProtectedRoute"
 export function SiteHeader() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
   const { user, signout, getFullName } = useReduxAuth()
 
   const fullName = getFullName()
@@ -77,7 +79,6 @@ export function SiteHeader() {
             <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#F97316]" />
           </Button>
 
-          <Separator orientation="vertical" className="h-5" />
 
           {/* User menu */}
           <DropdownMenu>

@@ -80,10 +80,10 @@ export function useReduxAuth() {
     try {
       await dispatch(logoutAsync()).unwrap();
       toast.success("Logged out successfully");
-      router.push("/login");
+      router.push("/auth/login");
     } catch {
       dispatch(logout());
-      router.push("/login");
+      router.push("/auth/login");
     }
   }, [dispatch, router]);
 
@@ -91,7 +91,7 @@ export function useReduxAuth() {
     try {
       await dispatch(logoutAll()).unwrap();
       toast.success("Logged out from all devices");
-      router.push("/login");
+      router.push("/auth/login");
     } catch (err: any) {
       toast.error(err || "Failed to logout from all devices");
     }
@@ -149,7 +149,7 @@ export function useReduxAuth() {
           resetPassword({ email, otp, newPassword }),
         ).unwrap();
         toast.success(result.message || "Password reset successful!");
-        router.push("/login");
+        router.push("/auth/login");
         return result;
       } catch (err: any) {
         toast.error(err || "Password reset failed");
@@ -218,9 +218,11 @@ export function useReduxAuth() {
   // ── Marketer registration ───────────────────────────────────────────────────
 
   const marketerStep1InitEmail = useCallback(
-    async (email: string) => {
+    async (email: string, firstName: string, lastName: string) => {
       try {
-        const result = await dispatch(marketerInitEmail({ email })).unwrap();
+        const result = await dispatch(
+          marketerInitEmail({ email, firstName, lastName }),
+        ).unwrap();
         toast.success(result.message || "OTP sent to your email!");
         return result;
       } catch (err: any) {
@@ -232,10 +234,10 @@ export function useReduxAuth() {
   );
 
   const marketerStep2VerifyEmail = useCallback(
-    async (email: string, otp: string) => {
+    async (registrationFlowId: string, otp: string) => {
       try {
         const result = await dispatch(
-          marketerVerifyEmail({ email, otp }),
+          marketerVerifyEmail({ registrationFlowId, otp }),
         ).unwrap();
         toast.success(result.message || "Email verified!");
         return result;
@@ -264,10 +266,10 @@ export function useReduxAuth() {
   );
 
   const marketerStep3InitPhone = useCallback(
-    async (phoneNumber: string) => {
+    async (registrationFlowId: string, phone: string) => {
       try {
         const result = await dispatch(
-          marketerInitPhone({ phoneNumber }),
+          marketerInitPhone({ registrationFlowId, phone }),
         ).unwrap();
         toast.success(result.message || "OTP sent to your phone!");
         return result;
@@ -281,22 +283,20 @@ export function useReduxAuth() {
 
   const marketerStep4Finalize = useCallback(
     async (payload: {
+      registrationFlowId: string;
       password: string;
-      firstName: string;
-      lastName: string;
-      [key: string]: any;
+      nickname: string;
     }) => {
       try {
         const result = await dispatch(marketerFinalize(payload)).unwrap();
         toast.success("Account created successfully!");
-        router.push("/dashboard");
         return result;
       } catch (err: any) {
         toast.error(err || "Registration failed");
         throw err;
       }
     },
-    [dispatch, router],
+    [dispatch],
   );
 
   const clearMarketerFlow = useCallback(() => {
@@ -321,7 +321,10 @@ export function useReduxAuth() {
   );
 
   const isAdmin = useCallback(
-    () => user?.userType === "SUPER_ADMIN" ||user?.userType === "ADMIN" || user?.userType === "STAFF",
+    () =>
+      user?.userType === "SUPER_ADMIN" ||
+      user?.userType === "ADMIN" ||
+      user?.userType === "STAFF",
     [user],
   );
 

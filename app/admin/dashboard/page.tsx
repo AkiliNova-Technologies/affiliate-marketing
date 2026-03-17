@@ -179,6 +179,10 @@ export default function DashboardPage() {
                 columns={productApprovalColumns}
                 data={productApprovalData}
                 pageSize={5}
+                showFilters={false}
+                showSort={false}
+                showPagination={false}
+                showSelection={false}
               />
             </div>
 
@@ -214,6 +218,10 @@ export default function DashboardPage() {
                 columns={campaignsColumns}
                 data={campaignsData}
                 pageSize={5}
+                showFilters={false}
+                showSort={false}
+                showPagination={false}
+                showSelection={false}
               />
             </div>
           </div>

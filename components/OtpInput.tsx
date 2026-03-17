@@ -5,13 +5,19 @@ interface OtpInputProps {
   value: string[];
   onChange: (value: string[]) => void;
   length?: number;
+  disabled?: boolean;
 }
 
-export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps) {
+export default function OtpInput({
+  value,
+  onChange,
+  length = 6,
+  disabled = false,
+}: OtpInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleChange = (index: number, char: string) => {
-    if (!/^\d*$/.test(char)) return;
+    if (disabled || !/^\d*$/.test(char)) return;
     const next = [...value];
     next[index] = char.slice(-1);
     onChange(next);
@@ -27,6 +33,7 @@ export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps)
   };
 
   const handlePaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    if (disabled) return;
     e.preventDefault();
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
     const next = [...value];
@@ -45,10 +52,11 @@ export default function OtpInput({ value, onChange, length = 6 }: OtpInputProps)
           inputMode="numeric"
           maxLength={1}
           value={value[i] || ""}
+          disabled={disabled}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          className="w-12 h-12 text-center text-lg font-semibold border border-orange-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400 transition-all"
+          className="w-12 h-12 text-center text-lg font-semibold border border-orange-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         />
       ))}
     </div>
