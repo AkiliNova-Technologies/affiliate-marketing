@@ -29,7 +29,9 @@ function AuthLoadingScreen() {
 export const ROLE_DASHBOARDS: Record<string, string> = {
   SUPER_ADMIN: "/admin/dashboard",
   ADMIN:       "/admin/dashboard",
-  STAFF:       "/admin/dashboard",
+  FINANCE:     "/admin/dashboard",
+  PRODUCT_MODERATOR: "/admin/dashboard",
+  SUPPORT:     "/admin/dashboard",
   VENDOR:      "/vendor/dashboard",
   MARKETER:    "/marketer/dashboard",
 };

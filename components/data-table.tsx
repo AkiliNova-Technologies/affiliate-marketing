@@ -387,7 +387,7 @@ export function DataTable<TData, TValue>({
       ) : (
         <div
           className={cn(
-            "flex flex-col gap-4 border bg-card px-5 py-4 rounded-xl",
+            "flex flex-col gap-4 border bg-card px-6 py-5 rounded-xl",
             className,
           )}
         >
@@ -409,7 +409,7 @@ export function DataTable<TData, TValue>({
                       </h3>
                     )}
                     {description && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground">
                         {description}
                       </p>
                     )}

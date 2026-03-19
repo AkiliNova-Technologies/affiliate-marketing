@@ -3,12 +3,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 
 const COUNTRY_CODES = [
-  { code: "256", label: "🇺🇬 +256" },
-  { code: "254", label: "🇰🇪 +254" },
-  { code: "255", label: "🇹🇿 +255" },
-  { code: "250", label: "🇷🇼 +250" },
-  { code: "1",   label: "🇺🇸 +1" },
-  { code: "44",  label: "🇬🇧 +44" },
+  { code: "256", label: "+256" },
+  { code: "254", label: "+254" },
+  { code: "255", label: "+255" },
+  { code: "250", label: "+250" },
+  { code: "1",   label: "+1" },
+  { code: "44",  label: "+44" },
 ];
 
 export default function PhoneField({
@@ -27,7 +27,7 @@ export default function PhoneField({
   return (
     <div className="flex gap-2">
       <Select value={cc} onValueChange={setCc} disabled={disabled}>
-        <SelectTrigger className="min-h-11 w-[110px] rounded-lg border-gray-300 bg-white focus:border-orange-400 focus:ring-orange-400">
+        <SelectTrigger className="min-h-11 w-[110px] rounded-md border-gray-300 bg-white focus:border-orange-400 focus:ring-orange-400">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -46,7 +46,7 @@ export default function PhoneField({
         placeholder="eg 7748958996"
         disabled={disabled}
         className={cn(
-          "h-11 flex-1 rounded-lg bg-white",
+          "h-11 flex-1 rounded-md bg-white",
           phone
             ? "border-orange-400 focus-visible:ring-orange-400"
             : "border-gray-300 focus-visible:ring-orange-400",

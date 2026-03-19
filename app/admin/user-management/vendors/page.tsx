@@ -924,7 +924,7 @@ function CreateVendorForm({
               onClick={() => setStep(2)}
               disabled={!s1ok}
               className={cn(
-                "h-11 px-7 gap-2 rounded-xl font-semibold",
+                "h-11 px-7 gap-2 rounded-md font-semibold",
                 s1ok
                   ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
                   : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
@@ -938,7 +938,7 @@ function CreateVendorForm({
               onClick={submit}
               disabled={!s2ok || vendorsActionLoading}
               className={cn(
-                "h-11 px-7 gap-2 rounded-xl font-semibold",
+                "h-11 px-7 gap-2 rounded-md font-semibold",
                 s2ok && !vendorsActionLoading
                   ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
                   : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
@@ -1230,14 +1230,20 @@ function VendorsListPage({
                 <TelescopeIllustration />
                 <h3 className="mt-1 text-lg font-semibold text-foreground">
                   {debouncedSearch
-                    ? "No marketers match your search"
-                    : "No marketers yet!"}
+                    ? "No vendors match your search"
+                    : "No vendors yet!"}
                 </h3>
                 <p className="text-sm text-muted-foreground">
                   {debouncedSearch
                     ? "Try a different term or clear the search"
-                    : "No list of marketers found here"}
+                    : "Add a new vendor by clicking on the button below"}
                 </p>
+                <Button
+                  onClick={onCreateVendor}
+                  className="mt-4 h-9 w-3xs gap-1.5 rounded-md px-8 text-sm font-semibold text-white hover:bg-[#F97316]/90"
+                >
+                  Add Vendor
+                </Button>
               </div>
             }
           />
