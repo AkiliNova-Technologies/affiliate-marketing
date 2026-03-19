@@ -53,14 +53,13 @@ const navItems = [
     icon: IconShoppingBag,
   },
   {
-    title: "Sales & Revenue",
-    url: "/vendor/sales",
+    title: "Revenue",
+    url: "/vendor/revenue",
     icon: IconCurrencyDollar,
-  },
-  {
-    title: "Support",
-    url: "/vendor/support",
-    icon: IconThumbUp,
+    children: [
+      { title: "Payouts", url: "/vendor/revenue/payouts" },
+      { title: "Sales", url: "/vendor/revenue/sales" },
+    ],
   },
 ];
 

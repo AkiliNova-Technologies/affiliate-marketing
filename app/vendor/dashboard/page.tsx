@@ -102,7 +102,7 @@ function StatCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-xl p-5 text-white",
+        "relative overflow-hidden rounded-md p-5 text-white",
         gradient,
       )}
     >
@@ -169,7 +169,7 @@ function SalesEarningsTrend() {
   };
 
   return (
-    <div className="rounded-xl border bg-white p-6">
+    <div className="rounded-md border bg-white p-6">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h3 className="font-semibold text-foreground">
@@ -279,7 +279,7 @@ function ProductPerformance() {
   };
 
   return (
-    <div className="rounded-xl border bg-white p-6 flex flex-col">
+    <div className="rounded-md border bg-white p-6 flex flex-col">
       <h3 className="font-semibold text-foreground mb-1">
         Product Performance
       </h3>
@@ -489,7 +489,7 @@ function EmptyDashboard({ onAddProducts }: { onAddProducts?: () => void }) {
 
       <Button
         onClick={onAddProducts}
-        className="h-12 px-10 rounded-xl font-semibold bg-[#1a1a1a] text-white hover:bg-[#333] text-sm"
+        className="h-12 px-10 rounded-md font-semibold bg-[#1a1a1a] text-white hover:bg-[#333] text-sm"
       >
         Add products
       </Button>
@@ -623,7 +623,7 @@ export default function VendorDashboardPage() {
               </div>
 
               {/* Product Action Center */}
-              <div className="rounded-xl">
+              <div className="rounded-md">
                 <DataTable
                   columns={productColumns}
                   data={MOCK_PRODUCTS}

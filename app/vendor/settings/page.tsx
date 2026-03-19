@@ -8,7 +8,6 @@ import {
   IconCamera,
   IconUpload,
   IconTrash,
-  IconChevronDown,
   IconEye,
   IconEyeOff,
 } from "@tabler/icons-react";
@@ -25,7 +24,7 @@ import PhoneField from "@/components/PhoneField";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = "general" | "security";
+type Tab = "general" | "security" | "payout";
 
 const COUNTRY_CODES = [
   { code: "256", label: "+256" },
@@ -63,11 +62,11 @@ function Spinner() {
   );
 }
 
-// ─── Success banner ───────────────────────────────────────────────────────────
+// ─── Success Banner ───────────────────────────────────────────────────────────
 
 function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 border-l-4 border-l-green-500 bg-green-50 px-5 py-3.5">
+    <div className="mb-6 flex items-center gap-3 rounded-md border border-green-200 border-l-4 border-l-green-500 bg-green-50 px-5 py-3.5">
       <div className="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-green-500">
         <IconCheck className="size-3 text-green-600" strokeWidth={3} />
       </div>
@@ -79,13 +78,20 @@ function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () 
   );
 }
 
-// ─── Password input ───────────────────────────────────────────────────────────
+// ─── Password Input ───────────────────────────────────────────────────────────
 
 function PasswordInput({
-  label, value, onChange, placeholder = "Enter your password", error,
+  label,
+  value,
+  onChange,
+  placeholder = "Enter your password",
+  error,
 }: {
-  label: string; value: string; onChange: (v: string) => void;
-  placeholder?: string; error?: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  error?: string;
 }) {
   const [show, setShow] = useState(false);
   return (
@@ -103,7 +109,9 @@ function PasswordInput({
           placeholder={placeholder}
           className={cn(
             "h-12 rounded-md pr-11 text-sm",
-            error ? "border-red-400 focus-visible:ring-red-300" : "border-gray-200 focus-visible:ring-[#F97316]"
+            error
+              ? "border-red-400 focus-visible:ring-red-300"
+              : "border-gray-200 focus-visible:ring-[#F97316]/40"
           )}
         />
         <button
@@ -118,23 +126,29 @@ function PasswordInput({
   );
 }
 
-// ─── Tab bar ──────────────────────────────────────────────────────────────────
+// ─── Tab Bar ─────────────────────────────────────────────────────────────────
+
+const TAB_LABELS: Record<Tab, string> = {
+  general: "General",
+  security: "Security",
+  payout: "Payout Information",
+};
 
 function TabBar({ active, onChange }: { active: Tab; onChange: (t: Tab) => void }) {
   return (
-    <div className="grid grid-cols-2 border-b border-gray-200 mb-8">
-      {(["general", "security"] as Tab[]).map((tab) => (
+    <div className="grid grid-cols-3 border-b border-gray-200 mb-8">
+      {(["general", "security", "payout"] as Tab[]).map((tab) => (
         <button
           key={tab}
           onClick={() => onChange(tab)}
           className={cn(
-            "py-3 text-sm font-semibold capitalize transition-colors relative",
+            "py-3.5 text-sm font-semibold transition-colors relative",
             active === tab
               ? "text-foreground bg-gray-50"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
-          {tab.charAt(0).toUpperCase() + tab.slice(1)}
+          {TAB_LABELS[tab]}
           {active === tab && (
             <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#F97316] rounded-t-full" />
           )}
@@ -158,6 +172,7 @@ function CloseAccountModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
       <div className="w-full max-w-[440px] rounded-2xl bg-[#faf5f0] p-8 shadow-2xl relative">
+        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-4 right-4 flex items-center justify-center rounded-full border border-gray-300 size-7 text-gray-500 hover:border-gray-500 transition-colors"
@@ -167,29 +182,8 @@ function CloseAccountModal({
 
         {/* Trash illustration */}
         <div className="flex justify-center mb-5">
-          <div className="flex items-center justify-center size-24">
-            <svg viewBox="0 0 96 96" className="w-full h-full" fill="none">
-              {/* Trash bin body */}
-              <rect x="22" y="38" width="52" height="48" rx="4" fill="#1a1a1a" />
-              {/* Lid */}
-              <rect x="16" y="28" width="64" height="12" rx="3" fill="#1a1a1a" />
-              <rect x="34" y="20" width="28" height="10" rx="3" fill="#1a1a1a" />
-              {/* Recycle symbol on bin */}
-              <path d="M48 48 L44 55 L52 55 Z" fill="white" />
-              <path d="M48 48 L54 55" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              <circle cx="48" cy="60" r="2" fill="white" />
-              {/* Papers flying out */}
-              <rect x="36" y="12" width="10" height="8" rx="1" fill="#d1d5db" transform="rotate(-15 36 12)" />
-              <rect x="52" y="8" width="8" height="6" rx="1" fill="#d1d5db" transform="rotate(10 52 8)" />
-              <rect x="62" y="16" width="9" height="7" rx="1" fill="#d1d5db" transform="rotate(20 62 16)" />
-              {/* Lines on papers */}
-              <line x1="38" y1="14" x2="44" y2="14" stroke="#9ca3af" strokeWidth="1" transform="rotate(-15 41 14)" />
-              <line x1="38" y1="17" x2="43" y2="17" stroke="#9ca3af" strokeWidth="1" transform="rotate(-15 41 17)" />
-              {/* Motion lines */}
-              <line x1="72" y1="30" x2="80" y2="26" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="74" y1="38" x2="83" y2="38" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" />
-              <line x1="20" y1="30" x2="12" y2="26" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
+          <div className="flex items-center justify-center">
+           <img src="/trash.png" alt="" className="h-38 w-38"/>
           </div>
         </div>
 
@@ -205,14 +199,14 @@ function CloseAccountModal({
           <Button
             onClick={onClose}
             variant="outline"
-            className="flex-1 h-11 rounded-xl border-gray-300 text-foreground font-semibold hover:border-gray-400"
+            className="flex-1 h-11 rounded-md border-gray-300 text-foreground font-semibold hover:border-gray-400"
           >
             Cancel
           </Button>
           <Button
             onClick={onConfirm}
             disabled={loading}
-            className="flex-1 h-11 rounded-xl bg-[#1a1a1a] text-white font-semibold hover:bg-[#333]"
+            className="flex-1 h-11 rounded-md bg-[#1a1a1a] text-white font-semibold hover:bg-[#333]"
           >
             {loading ? <><Spinner /> Closing…</> : "Confirm"}
           </Button>
@@ -227,39 +221,30 @@ function CloseAccountModal({
 function GeneralTab() {
   const { user, updateCurrentUser } = useReduxAuth();
 
-  // Business fields
   const [businessName, setBusinessName] = useState(
     (user as any)?.businessName ?? (user as any)?.profile?.businessName ?? ""
   );
-  const [businessDesc, setBusinessDesc] = useState(
-    (user as any)?.businessDescription ?? (user as any)?.profile?.description ?? ""
-  );
 
-  // Personal / contact fields
   const [contactName, setContactName] = useState(
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") || ""
   );
   const parsed = parsePhone(user?.phoneNumber);
   const [cc, setCc] = useState(parsed.cc);
   const [phone, setPhone] = useState(parsed.number);
-  const [ccOpen, setCcOpen] = useState(false);
 
   // Avatar
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user?.avatarUrl ?? null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // State
   const [isSaving, setIsSaving] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
 
   const origBusinessName = (user as any)?.businessName ?? (user as any)?.profile?.businessName ?? "";
-  const origBusinessDesc = (user as any)?.businessDescription ?? (user as any)?.profile?.description ?? "";
   const origContactName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "";
 
   const isDirty =
     businessName !== origBusinessName ||
-    businessDesc !== origBusinessDesc ||
     contactName !== origContactName ||
     phone !== parsed.number ||
     cc !== parsed.cc ||
@@ -286,7 +271,6 @@ function GeneralTab() {
 
       const formData = new FormData();
       formData.append("businessName", businessName);
-      if (businessDesc) formData.append("businessDescription", businessDesc);
       formData.append("firstName", firstName);
       if (lastName) formData.append("lastName", lastName);
       formData.append("phoneNumber", `+${cc}${phone}`);
@@ -325,28 +309,28 @@ function GeneralTab() {
       )}
 
       {/* Business name heading */}
-      <h3 className="text-xl font-bold text-foreground mb-5">{displayName}</h3>
+      <h3 className="text-2xl font-bold text-foreground mb-6">{displayName}</h3>
 
       {/* Avatar section */}
       <div className="mb-8 flex items-center gap-5">
-        {/* Avatar thumbnail */}
+        {/* Rounded-square avatar thumbnail */}
         <div className="relative shrink-0">
-           <div className="size-[90px] rounded-full overflow-hidden border-2 border-gray-200 bg-gray-100">
+          <div className="size-[100px] rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center">
             {avatarUrl ? (
               <img src={avatarUrl} alt="Avatar" className="size-full object-cover" />
             ) : (
-              <svg viewBox="0 0 90 90" className="size-full" fill="none">
-                <rect width="90" height="90" fill="#e5e7eb" />
-                <circle cx="45" cy="35" r="18" fill="#9ca3af" />
-                <ellipse cx="45" cy="80" rx="28" ry="20" fill="#9ca3af" />
+              <svg viewBox="0 0 100 100" className="size-full" fill="none">
+                <rect width="100" height="100" fill="#e5e7eb" />
+                <circle cx="50" cy="38" r="20" fill="#9ca3af" />
+                <ellipse cx="50" cy="92" rx="36" ry="26" fill="#9ca3af" />
               </svg>
             )}
           </div>
           <button
             onClick={() => fileRef.current?.click()}
-            className="absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-[#F97316] text-white shadow-md hover:bg-[#F97316]/90 transition-colors"
+            className="absolute -bottom-2 -right-2 flex size-8 items-center justify-center rounded-full bg-[#F97316] text-white shadow-md hover:bg-[#F97316]/90 transition-colors"
           >
-            <IconCamera className="size-3.5" />
+            <IconCamera className="size-4" />
           </button>
           <input
             ref={fileRef}
@@ -359,19 +343,19 @@ function GeneralTab() {
 
         {/* Upload controls */}
         <div>
-          <p className="text-base font-bold text-foreground mb-0.5">Upload Business Avatar</p>
-          <p className="text-xs text-muted-foreground mb-3">JPG, PNG, WEBP Max Size 3MB</p>
+          <p className="text-lg font-bold text-foreground mb-0.5">Upload Business Avatar</p>
+          <p className="text-xs text-muted-foreground mb-4">JPG, PNG, WEBP Max Size 3MB</p>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => fileRef.current?.click()}
-              className="flex items-center gap-1.5 rounded-md bg-[#1a1a1a] px-4 py-2 text-xs font-semibold text-white hover:bg-[#333] transition-colors"
+              className="flex items-center gap-1.5 rounded-md bg-[#1a1a1a] px-4 py-2 text-sm font-semibold text-white hover:bg-[#333] transition-colors"
             >
               <IconUpload className="size-3.5 text-[#F97316]" />
               Upload Avatar
             </button>
             <button
               onClick={handleDeleteAvatar}
-              className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-xs font-medium text-muted-foreground hover:border-gray-300 transition-colors"
+              className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-muted-foreground hover:border-gray-300 transition-colors"
             >
               <IconTrash className="size-3.5" />
               Delete Avatar
@@ -381,37 +365,21 @@ function GeneralTab() {
       </div>
 
       {/* Business Details */}
-      <h4 className="text-base font-bold text-foreground mb-4">Business Details</h4>
-      <div className="flex flex-col gap-4 mb-8">
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-1.5">
-            Business Name <span className="text-[#F97316]">*</span>
-          </label>
-          <Input
-            value={businessName}
-            onChange={(e) => setBusinessName(e.target.value)}
-            className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316] text-sm"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-0.5">
-            Business Description
-          </label>
-          <p className="text-xs text-[#F97316] mb-2">
-            Describe this business, including its mission, values, and products or services offered.
-          </p>
-          <textarea
-            value={businessDesc}
-            onChange={(e) => setBusinessDesc(e.target.value)}
-            rows={6}
-            className="w-full rounded-md border border-gray-200 bg-white p-3 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-[#F97316]/30 transition-all"
-          />
-        </div>
+      <h4 className="text-xl font-bold text-foreground mb-4">Business Details</h4>
+      <div className="mb-8">
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          Business Name <span className="text-[#F97316]">*</span>
+        </label>
+        <Input
+          value={businessName}
+          onChange={(e) => setBusinessName(e.target.value)}
+          className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+        />
       </div>
 
       {/* Personal Details */}
-      <h4 className="text-base font-bold text-foreground mb-4">Personal Details</h4>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end mb-6">
+      <h4 className="text-xl font-bold text-foreground mb-4">Personal Details</h4>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-end mb-8">
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
             Contact person name <span className="text-[#F97316]">*</span>
@@ -419,19 +387,14 @@ function GeneralTab() {
           <Input
             value={contactName}
             onChange={(e) => setContactName(e.target.value)}
-            className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316] text-sm"
+            className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-foreground mb-1.5">
             Phone <span className="text-[#F97316]">*</span>
           </label>
-          <PhoneField
-            phone={phone}
-            setPhone={setPhone}
-            cc={cc}
-            setCc={setCc}
-          />
+          <PhoneField phone={phone} setPhone={setPhone} cc={cc} setCc={setCc} />
         </div>
       </div>
 
@@ -440,7 +403,7 @@ function GeneralTab() {
         onClick={handleSave}
         disabled={!isDirty || isSaving}
         className={cn(
-          "h-11 min-w-[140px] rounded-md text-sm font-semibold transition-all",
+          "h-11 min-w-[160px] rounded-md text-sm font-semibold transition-all",
           isDirty && !isSaving
             ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
             : "bg-gray-300 text-white cursor-not-allowed pointer-events-none"
@@ -461,8 +424,6 @@ function GeneralTab() {
 // ─── Security Tab ─────────────────────────────────────────────────────────────
 
 function SecurityTab() {
-  const { user } = useReduxAuth();
-
   // Change password
   const [current, setCurrent] = useState("");
   const [newPass, setNewPass] = useState("");
@@ -526,10 +487,10 @@ function SecurityTab() {
         />
       )}
 
-      {/* Change Password section */}
-      <h3 className="text-xl font-bold text-foreground mb-6">Change Password</h3>
+      {/* Change Password */}
+      <h3 className="text-2xl font-bold text-foreground mb-6">Change Password</h3>
 
-      <div className="flex flex-col gap-4 max-w-[600px]">
+      <div className="flex flex-col gap-4 mb-6">
         <PasswordInput
           label="Current Password"
           value={current}
@@ -542,22 +503,24 @@ function SecurityTab() {
           onChange={(v) => { setNewPass(v); if (confirmError) setConfirmError(""); }}
           placeholder="Enter your new password"
         />
-        <PasswordInput
-          label="Confirm Password"
-          value={confirm}
-          onChange={(v) => { setConfirm(v); if (confirmError) setConfirmError(""); }}
-          placeholder="Confirm password"
-          error={confirmError || undefined}
-        />
+        <div onBlur={handleConfirmBlur}>
+          <PasswordInput
+            label="Confirm Password"
+            value={confirm}
+            onChange={(v) => { setConfirm(v); if (confirmError) setConfirmError(""); }}
+            placeholder="Confirm password"
+            error={confirmError || undefined}
+          />
+        </div>
       </div>
 
       {/* Reset button */}
-      <div className="mt-6 mb-8">
+      <div className="mb-8">
         <Button
           onClick={handleReset}
           disabled={!canSubmit || isResetting}
           className={cn(
-            "h-11 min-w-[160px] rounded-xl text-sm font-semibold transition-all",
+            "h-11 min-w-[160px] rounded-md text-sm font-semibold transition-all",
             canSubmit && !isResetting
               ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
               : "bg-gray-300 text-white cursor-not-allowed pointer-events-none"
@@ -574,9 +537,9 @@ function SecurityTab() {
       </div>
 
       {/* Divider */}
-      <div className="border-t border-gray-100 mb-8" />
+      <div className="border-t border-gray-200 mb-8" />
 
-      {/* Close Account section */}
+      {/* Close Account */}
       <div className="flex items-start justify-between gap-6">
         <div>
           <h3 className="text-xl font-bold text-foreground mb-1">Close your Account</h3>
@@ -587,13 +550,12 @@ function SecurityTab() {
         </div>
         <button
           onClick={() => setShowCloseModal(true)}
-          className="shrink-0 flex items-center gap-2 rounded-xl bg-[#c0392b] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#a93226] transition-colors"
+          className="shrink-0 flex items-center gap-2 rounded-md bg-[#c0392b] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#a93226] transition-colors"
         >
           Close account
         </button>
       </div>
 
-      {/* Close Account modal */}
       {showCloseModal && (
         <CloseAccountModal
           onClose={() => setShowCloseModal(false)}
@@ -605,10 +567,229 @@ function SecurityTab() {
   );
 }
 
+// ─── Payout Information Tab ───────────────────────────────────────────────────
+
+type PayoutMethod = "bank" | "mobile";
+
+function PayoutTab() {
+  const [method, setMethod] = useState<PayoutMethod>("bank");
+
+  // Bank fields
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [confirmAccount, setConfirmAccount] = useState("");
+  const [swiftCode, setSwiftCode] = useState("");
+
+  // Mobile Money fields
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [serviceProvider, setServiceProvider] = useState("");
+  const [registeredName, setRegisteredName] = useState("");
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      if (method === "bank") {
+        await api.post("/api/v1/profile/payout/bank", {
+          bankName, accountNumber, swiftCode,
+        });
+      } else {
+        await api.post("/api/v1/profile/payout/mobile", {
+          mobileNumber, serviceProvider, registeredName,
+        });
+      }
+      toast.success("Payout information saved successfully");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save payout information");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Heading */}
+      <h3 className="text-2xl font-bold text-foreground mb-1">Payment Information</h3>
+      <p className="text-sm text-muted-foreground mb-6">
+        Choose either Bank or mobile Money or to receive your payments
+      </p>
+
+      {/* Sub-tab toggle */}
+      <div className="flex items-center gap-3 mb-6">
+        {/* Bank tab */}
+        <button
+          onClick={() => setMethod("bank")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors",
+            method === "bank"
+              ? "border-[#F97316] bg-orange-50 text-foreground"
+              : "border-gray-200 bg-white text-muted-foreground hover:border-gray-300"
+          )}
+        >
+          <svg
+            className={cn("size-4 shrink-0", method === "bank" ? "text-[#F97316]" : "text-gray-400")}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+          >
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+            <line x1="1" y1="10" x2="23" y2="10" />
+          </svg>
+          Enter Bank Information
+        </button>
+
+        {/* Mobile Money tab */}
+        <button
+          onClick={() => setMethod("mobile")}
+          className={cn(
+            "flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-semibold transition-colors",
+            method === "mobile"
+              ? "border-[#F97316] bg-orange-50 text-foreground"
+              : "border-gray-200 bg-white text-muted-foreground hover:border-gray-300"
+          )}
+        >
+          <svg
+            className={cn("size-4 shrink-0", method === "mobile" ? "text-[#F97316]" : "text-gray-400")}
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round"
+          >
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+            <line x1="12" y1="18" x2="12.01" y2="18" />
+          </svg>
+          Enter Mobile Money Information
+        </button>
+      </div>
+
+      {/* Bank form */}
+      {method === "bank" && (
+        <div className="flex flex-col gap-4 max-w-[640px]">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Bank Name <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={bankName}
+              onChange={(e) => setBankName(e.target.value)}
+              placeholder="Enter your new password"
+              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Account Number <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={accountNumber}
+              onChange={(e) => setAccountNumber(e.target.value)}
+              placeholder="Confirm password"
+              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Account Number <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={confirmAccount}
+              onChange={(e) => setConfirmAccount(e.target.value)}
+              placeholder="Confirm password"
+              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Swift Code <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={swiftCode}
+              onChange={(e) => setSwiftCode(e.target.value)}
+              placeholder="Confirm password"
+              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Money form */}
+      {method === "mobile" && (
+        <div className="flex flex-col gap-4 max-w-[640px]">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Mobile Money Number <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              placeholder="Enter your mobile number"
+              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Service Provider <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={serviceProvider}
+              readOnly
+              placeholder="Automatically loads"
+              className="h-12 rounded-md border-gray-200 bg-gray-50 text-sm text-muted-foreground cursor-not-allowed"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Registered names <span className="text-[#F97316]">*</span>
+            </label>
+            <Input
+              value={registeredName}
+              readOnly
+              placeholder="Automatically loads user names"
+              className="h-12 rounded-md border-gray-200 bg-gray-50 text-sm text-muted-foreground cursor-not-allowed"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Save button */}
+      <div className="mt-6">
+        <Button
+          onClick={handleSave}
+          disabled={isSaving}
+          className="h-11 min-w-[120px] rounded-md bg-[#1a1a1a] text-white text-sm font-semibold hover:bg-[#333] transition-colors disabled:opacity-60"
+        >
+          {isSaving ? (
+            <span className="flex items-center gap-2"><Spinner /> Saving…</span>
+          ) : (
+            "Save"
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Section header text per tab ─────────────────────────────────────────────
+
+const SECTION_HEADERS: Record<Tab, { title: string; subtitle: string }> = {
+  general: {
+    title: "Complete Your Business Profile",
+    subtitle: "Make chnages to your business profile information",
+  },
+  security: {
+    title: "Security Settings",
+    subtitle: "Make chnages to your password information",
+  },
+  payout: {
+    title: "Payout Information",
+    subtitle: "Choose either Bank or mobile Money to receive your payments",
+  },
+};
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function VendorSettingsPage() {
   const [tab, setTab] = useState<Tab>("general");
+
+  const { title, subtitle } = SECTION_HEADERS[tab];
 
   return (
     <SidebarProvider
@@ -623,23 +804,18 @@ export default function VendorSettingsPage() {
         <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7] min-h-screen">
           <h1 className="mb-5 text-2xl font-bold text-foreground">Settings</h1>
 
-          <div className="w-full max-w-8xl rounded-xl border bg-card p-6">
+          <div className="w-full max-w-8xl rounded-md border bg-card p-6">
             {/* Section header */}
             <div className="mb-5">
-              <h2 className="text-lg font-semibold text-foreground">
-                {tab === "general" ? "Complete Your Business Profile" : "Security Settings"}
-              </h2>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                {tab === "general"
-                  ? "Make chnages to your business profile information"
-                  : "Make chnages to your password information"}
-              </p>
+              <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+              <p className="mt-0.5 text-sm text-[#F97316]">{subtitle}</p>
             </div>
 
             <TabBar active={tab} onChange={setTab} />
 
-            {tab === "general" && <GeneralTab />}
+            {tab === "general"  && <GeneralTab />}
             {tab === "security" && <SecurityTab />}
+            {tab === "payout"   && <PayoutTab />}
           </div>
         </div>
       </SidebarInset>
