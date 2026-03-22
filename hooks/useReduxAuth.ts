@@ -39,6 +39,9 @@ import {
   selectPasswordReset,
   selectUserRole,
   type User,
+  marketerVerifyPhone,
+  marketerResendPhoneOtp,
+  marketerTriggerPhoneOtp,
 } from "@/redux/slices/authSlice";
 
 export function useReduxAuth() {
@@ -299,6 +302,54 @@ export function useReduxAuth() {
     [dispatch],
   );
 
+  const marketerTriggerOTP = useCallback(
+    async (registrationFlowId: string) => {
+      try {
+        const result = await dispatch(
+          marketerTriggerPhoneOtp({ registrationFlowId }),
+        ).unwrap();
+        toast.success(result.message || "Phone OTP sent!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Failed to trigger phone OTP");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const marketerResendPhoneOTPStep = useCallback(
+    async (registrationFlowId: string) => {
+      try {
+        const result = await dispatch(
+          marketerResendPhoneOtp({ registrationFlowId }),
+        ).unwrap();
+        toast.success(result.message || "Phone OTP resent!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Failed to resend phone OTP");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const marketerVerifyPhoneStep = useCallback(
+    async (registrationFlowId: string, otp: string) => {
+      try {
+        const result = await dispatch(
+          marketerVerifyPhone({ registrationFlowId, otp }),
+        ).unwrap();
+        toast.success(result.message || "Phone verified!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Phone verification failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
   const clearMarketerFlow = useCallback(() => {
     dispatch(resetMarketerRegistration());
   }, [dispatch]);
@@ -381,6 +432,9 @@ export function useReduxAuth() {
     marketerResendOTP,
     marketerStep3InitPhone,
     marketerStep4Finalize,
+    marketerTriggerOTP,
+    marketerResendPhoneOTPStep,
+    marketerVerifyPhoneStep,
     clearMarketerFlow,
 
     // Helpers

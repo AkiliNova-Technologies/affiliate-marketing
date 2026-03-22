@@ -289,12 +289,12 @@ export default function VendorPayoutsPage() {
 
           {/* Page title */}
           <div className="flex items-center gap-3 mb-4">
-            <button
+            {/* <button
               onClick={() => window.history.back()}
               className="flex items-center justify-center size-8 rounded-full hover:bg-gray-200 transition-colors"
             >
               <IconArrowLeft className="size-5 text-foreground" />
-            </button>
+            </button> */}
             <h1 className="text-2xl font-bold text-foreground">Payouts</h1>
           </div>
 

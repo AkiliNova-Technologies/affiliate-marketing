@@ -21,6 +21,7 @@ import {
   selectAdminVendorsTotal,
   selectAdminVendorsActionLoading,
   type Vendor,
+  activatePendingVendor,
 } from "@/redux/slices/adminVendorsSlice";
 
 // ── Admin Marketers
@@ -170,6 +171,20 @@ export function useReduxAdmin() {
         return result;
       } catch (err: any) {
         toast.error(err || "Update failed");
+        throw err;
+      }
+    },
+    [dispatch]
+  );
+
+    const activatePendingVendorById = useCallback(
+    async (id: string) => {
+      try {
+        const result = await dispatch(activatePendingVendor(id)).unwrap();
+        toast.success("Vendor activated!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Vendor activation failed");
         throw err;
       }
     },
@@ -398,6 +413,7 @@ export function useReduxAdmin() {
     addVendor,
     resendInvite,
     editVendor,
+    activatePendingVendorById,
     changeVendorStatus,
     deselectVendor,
 

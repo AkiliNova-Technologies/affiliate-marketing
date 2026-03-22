@@ -24,7 +24,12 @@ export interface Vendor {
   id: string;
   role?: string;
   email: string;
-  status: "PENDING_ACTIVATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED" | string;
+  status:
+    | "PENDING_ACTIVATION"
+    | "ACTIVE"
+    | "SUSPENDED"
+    | "DEACTIVATED"
+    | string;
   firstName: string;
   lastName: string;
   phone?: string;
@@ -64,8 +69,13 @@ const initialState: AdminVendorsState = {
 export const fetchAdminVendors = createAsyncThunk(
   "adminVendors/fetchAll",
   async (
-    params: { page?: number; limit?: number; status?: string; search?: string } = {},
-    { rejectWithValue }
+    params: {
+      page?: number;
+      limit?: number;
+      status?: string;
+      search?: string;
+    } = {},
+    { rejectWithValue },
   ) => {
     try {
       const { data } = await api.get("/api/v1/admin/vendors", { params });
@@ -79,7 +89,7 @@ export const fetchAdminVendors = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** GET /api/v1/admin/vendors/{id} */
@@ -92,7 +102,7 @@ export const fetchAdminVendorById = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/admin/vendors/registration
@@ -109,15 +119,18 @@ export const registerVendor = createAsyncThunk(
       contactPhone?: string;
       [key: string]: any;
     },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
-      const { data } = await api.post("/api/v1/admin/vendors/registration", payload);
+      const { data } = await api.post(
+        "/api/v1/admin/vendors/registration",
+        payload,
+      );
       return data as Vendor;
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** POST /api/v1/admin/vendors/{id}/resend-invite */
@@ -125,12 +138,15 @@ export const resendVendorInvite = createAsyncThunk(
   "adminVendors/resendInvite",
   async (id: string, { rejectWithValue }) => {
     try {
-      const { data } = await api.post(`/api/v1/admin/vendors/${id}/resend-invite`, {});
+      const { data } = await api.post(
+        `/api/v1/admin/vendors/${id}/resend-invite`,
+        {},
+      );
       return { id, message: data.message };
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 /** PATCH /api/v1/admin/vendors/{id}
@@ -153,7 +169,7 @@ export const updateAdminVendor = createAsyncThunk(
         [key: string]: any;
       };
     },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const { data } = await api.patch(`/api/v1/admin/vendors/${id}`, payload);
@@ -161,7 +177,25 @@ export const updateAdminVendor = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
+);
+
+/** PATCH /api/v1/admin/vendors/{id}/activate
+ *  Activates a vendor that is currently in PENDING_ACTIVATION state.
+ */
+export const activatePendingVendor = createAsyncThunk(
+  "adminVendors/activate",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(
+        `/api/v1/admin/vendors/${id}/activate`,
+        {},
+      );
+      return data as Vendor;
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
 );
 
 /** PATCH /api/v1/admin/vendors/{id}/status */
@@ -169,15 +203,17 @@ export const updateVendorStatus = createAsyncThunk(
   "adminVendors/updateStatus",
   async (
     { id, status }: { id: string; status: "SUSPENDED" | "ACTIVE" },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
-      const { data } = await api.patch(`/api/v1/admin/vendors/${id}/status`, { status });
+      const { data } = await api.patch(`/api/v1/admin/vendors/${id}/status`, {
+        status,
+      });
       return data as Vendor;
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }
-  }
+  },
 );
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -194,24 +230,34 @@ const adminVendorsSlice = createSlice({
   name: "adminVendors",
   initialState,
   reducers: {
-    clearSelectedVendor(state) { state.selectedVendor = null; },
-    clearError(state) { state.error = null; },
+    clearSelectedVendor(state) {
+      state.selectedVendor = null;
+    },
+    clearError(state) {
+      state.error = null;
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAdminVendors.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchAdminVendors.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchAdminVendors.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.vendors = payload.vendors;
-        state.total   = payload.total;
-        state.page    = payload.page;
+        state.total = payload.total;
+        state.page = payload.page;
       })
       .addCase(fetchAdminVendors.rejected, (state, { payload }) => {
         state.loading = false;
         state.error = payload as string;
       })
 
-      .addCase(fetchAdminVendorById.pending, (state) => { state.loading = true; state.error = null; })
+      .addCase(fetchAdminVendorById.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(fetchAdminVendorById.fulfilled, (state, { payload }) => {
         state.loading = false;
         state.selectedVendor = payload;
@@ -221,7 +267,10 @@ const adminVendorsSlice = createSlice({
         state.error = payload as string;
       })
 
-      .addCase(registerVendor.pending, (state) => { state.actionLoading = true; state.error = null; })
+      .addCase(registerVendor.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(registerVendor.fulfilled, (state, { payload }) => {
         state.actionLoading = false;
         state.vendors.unshift(payload);
@@ -232,29 +281,56 @@ const adminVendorsSlice = createSlice({
         state.error = payload as string;
       })
 
-      .addCase(resendVendorInvite.pending, (state) => { state.actionLoading = true; })
-      .addCase(resendVendorInvite.fulfilled, (state) => { state.actionLoading = false; })
+      .addCase(resendVendorInvite.pending, (state) => {
+        state.actionLoading = true;
+      })
+      .addCase(resendVendorInvite.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
       .addCase(resendVendorInvite.rejected, (state, { payload }) => {
         state.actionLoading = false;
         state.error = payload as string;
       })
 
-      .addCase(updateAdminVendor.pending, (state) => { state.actionLoading = true; state.error = null; })
+      .addCase(activatePendingVendor.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(activatePendingVendor.fulfilled, (state, { payload }) => {
+        state.actionLoading = false;
+        upsertVendor(state.vendors, payload);
+        if (state.selectedVendor?.id === payload.id)
+          state.selectedVendor = payload;
+      })
+      .addCase(activatePendingVendor.rejected, (state, { payload }) => {
+        state.actionLoading = false;
+        state.error = payload as string;
+      })
+
+      .addCase(updateAdminVendor.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(updateAdminVendor.fulfilled, (state, { payload }) => {
         state.actionLoading = false;
         upsertVendor(state.vendors, payload);
-        if (state.selectedVendor?.id === payload.id) state.selectedVendor = payload;
+        if (state.selectedVendor?.id === payload.id)
+          state.selectedVendor = payload;
       })
       .addCase(updateAdminVendor.rejected, (state, { payload }) => {
         state.actionLoading = false;
         state.error = payload as string;
       })
 
-      .addCase(updateVendorStatus.pending, (state) => { state.actionLoading = true; state.error = null; })
+      .addCase(updateVendorStatus.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
       .addCase(updateVendorStatus.fulfilled, (state, { payload }) => {
         state.actionLoading = false;
         upsertVendor(state.vendors, payload);
-        if (state.selectedVendor?.id === payload.id) state.selectedVendor = payload;
+        if (state.selectedVendor?.id === payload.id)
+          state.selectedVendor = payload;
       })
       .addCase(updateVendorStatus.rejected, (state, { payload }) => {
         state.actionLoading = false;
@@ -267,9 +343,19 @@ export const { clearSelectedVendor, clearError } = adminVendorsSlice.actions;
 export default adminVendorsSlice.reducer;
 
 // ─── Selectors ────────────────────────────────────────────────────────────────
-export const selectAdminVendors         = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.vendors;
-export const selectSelectedVendor       = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.selectedVendor;
-export const selectAdminVendorsLoading  = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.loading;
-export const selectAdminVendorsError    = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.error;
-export const selectAdminVendorsTotal    = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.total;
-export const selectAdminVendorsActionLoading = (s: { adminVendors: AdminVendorsState }) => s.adminVendors.actionLoading;
+export const selectAdminVendors = (s: { adminVendors: AdminVendorsState }) =>
+  s.adminVendors.vendors;
+export const selectSelectedVendor = (s: { adminVendors: AdminVendorsState }) =>
+  s.adminVendors.selectedVendor;
+export const selectAdminVendorsLoading = (s: {
+  adminVendors: AdminVendorsState;
+}) => s.adminVendors.loading;
+export const selectAdminVendorsError = (s: {
+  adminVendors: AdminVendorsState;
+}) => s.adminVendors.error;
+export const selectAdminVendorsTotal = (s: {
+  adminVendors: AdminVendorsState;
+}) => s.adminVendors.total;
+export const selectAdminVendorsActionLoading = (s: {
+  adminVendors: AdminVendorsState;
+}) => s.adminVendors.actionLoading;

@@ -1,3 +1,5 @@
+// redux/store.ts
+
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import {
   persistStore,
@@ -11,6 +13,7 @@ import {
 } from "redux-persist";
 import storage from "redux-persist/lib/storage";
 
+// ── Existing slices ────────────────────────────────────────────────────────────
 import authReducer from "./slices/authSlice";
 import adminVendorsReducer from "./slices/adminVendorsSlice";
 import adminMarketersReducer from "./slices/adminMarketersSlice";
@@ -21,28 +24,56 @@ import marketplaceReducer from "./slices/marketplaceSlice";
 import categoriesReducer from "./slices/categoriesSlice";
 import profileReducer from "./slices/profileSlice";
 
+// ── New slices ─────────────────────────────────────────────────────────────────
+import affiliateLinksReducer from "./slices/affiliateLinksSlice";
+import campaignsReducer from "./slices/campaignsSlice";
+import adminCampaignsReducer from "./slices/adminCampaignsSlice";
+import checkoutReducer from "./slices/checkoutSlice";
+import vendorWebhooksReducer from "./slices/vendorWebhooksSlice";
+
 // ─── Persist configs ───────────────────────────────────────────────────────────
 
 const authPersistConfig = {
   key: "auth",
   storage,
   version: 1,
-  // Persist the user object and auth flag so the session survives a refresh
   whitelist: ["user", "isAuthenticated"],
-  blacklist: ["loading", "error", "initialLoading", "sessions", "marketerRegistration"],
+  blacklist: [
+    "loading",
+    "error",
+    "initialLoading",
+    "sessions",
+    "marketerRegistration",
+  ],
 };
 
 // ─── Root reducer ──────────────────────────────────────────────────────────────
 
 const rootReducer = combineReducers({
+  // Auth
   auth: persistReducer(authPersistConfig, authReducer),
+
+  // Admin
   adminVendors: adminVendorsReducer,
   adminMarketers: adminMarketersReducer,
   adminProducts: adminProductsReducer,
   adminScheduler: adminSchedulerReducer,
+  adminCampaigns: adminCampaignsReducer,
+
+  // Vendor
   vendorProducts: vendorProductsReducer,
+  vendorWebhooks: vendorWebhooksReducer,
+
+  // Marketer
+  affiliateLinks: affiliateLinksReducer,
+  campaigns: campaignsReducer,
+
+  // Shared / public
   marketplace: marketplaceReducer,
   categories: categoriesReducer,
+  checkout: checkoutReducer,
+
+  // User
   profile: profileReducer,
 });
 

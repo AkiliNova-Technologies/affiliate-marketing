@@ -753,7 +753,7 @@ function ProductsListPage({
         )}
 
         {/* DataTable */}
-        <div className="rounded-xl border bg-card px-5 py-4">
+        <div className="rounded-xl">
           <DataTable
             columns={columns}
             data={productQueue as ApiProduct[]}

@@ -61,7 +61,7 @@ export interface AuthSession {
 }
 
 interface MarketerRegistrationState {
-  step: "idle" | "email-sent" | "email-verified" | "phone-added" | "complete";
+  step: "idle" | "email-sent" | "email-verified" | "phone-added" | "phone-verified" | "complete";
   email: string | null;
   firstName: string | null;
   lastName: string | null;
@@ -463,6 +463,63 @@ export const marketerFinalize = createAsyncThunk(
   },
 );
 
+/** POST /api/v1/auth/marketer-registration/trigger-phone-otp */
+export const marketerTriggerPhoneOtp = createAsyncThunk(
+  "auth/marketerTriggerPhoneOtp",
+  async (
+    { registrationFlowId }: { registrationFlowId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/api/v1/auth/marketer-registration/trigger-phone-otp",
+        { registrationFlowId },
+      );
+      return { message: data.message };
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
+/** POST /api/v1/auth/marketer-registration/resend-phone-otp */
+export const marketerResendPhoneOtp = createAsyncThunk(
+  "auth/marketerResendPhoneOtp",
+  async (
+    { registrationFlowId }: { registrationFlowId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/api/v1/auth/marketer-registration/resend-phone-otp",
+        { registrationFlowId },
+      );
+      return { message: data.message };
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
+/** POST /api/v1/auth/marketer-registration/verify-phone */
+export const marketerVerifyPhone = createAsyncThunk(
+  "auth/marketerVerifyPhone",
+  async (
+    { registrationFlowId, otp }: { registrationFlowId: string; otp: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/api/v1/auth/marketer-registration/verify-phone",
+        { registrationFlowId, otp },
+      );
+      return { message: data.message };
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
 // ─── Slice ─────────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
@@ -680,6 +737,9 @@ const authSlice = createSlice({
       })
       .addCase(marketerInitPhone.fulfilled, (state) => {
         state.marketerRegistration.step = "phone-added";
+      })
+      .addCase(marketerVerifyPhone.fulfilled, (state) => {
+        state.marketerRegistration.step = "phone-verified";
       })
       .addCase(marketerFinalize.fulfilled, (state, { payload }) => {
         state.marketerRegistration.step = "complete";

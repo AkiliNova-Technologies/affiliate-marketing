@@ -1,11 +1,10 @@
 "use client"
 
-import { IconBell, IconMoon, IconSun } from "@tabler/icons-react"
+import { IconMoon, IconSun } from "@tabler/icons-react"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,12 +16,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useReduxAuth } from "@/hooks/useReduxAuth"
 import { ROLE_DASHBOARDS } from "@/components/guards/ProtectedRoute"
+import { NotificationsBell } from "@/components/notifications-sheet"
 
 export function SiteHeader() {
   const { theme, setTheme } = useTheme()
   const router = useRouter()
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
   const { user, signout, getFullName } = useReduxAuth()
 
   const fullName = getFullName()
@@ -42,7 +40,6 @@ export function SiteHeader() {
   const settingsPath = (() => {
     if (!user) return "/settings"
     const dashboard = ROLE_DASHBOARDS[user.userType] ?? "/dashboard"
-    // e.g. /admin/dashboard → /admin/settings
     return dashboard.replace("/dashboard", "/settings")
   })()
 
@@ -69,16 +66,8 @@ export function SiteHeader() {
             <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Notifications */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative size-8 rounded-full text-muted-foreground"
-          >
-            <IconBell className="size-4" />
-            <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#F97316]" />
-          </Button>
-
+          {/* Notifications bell — opens sheet */}
+          <NotificationsBell />
 
           {/* User menu */}
           <DropdownMenu>
