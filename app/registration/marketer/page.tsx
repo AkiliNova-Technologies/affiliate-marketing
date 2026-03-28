@@ -36,9 +36,12 @@ export default function MarketerRegistrationPage() {
     marketerRegistration,
     marketerStep1InitEmail,
     marketerStep2VerifyEmail,
-    marketerResendOTP,
-    marketerStep3InitPhone,
-    marketerStep4Finalize,
+    marketerResendOTP,         // resend email OTP  → POST .../resend-email-otp
+    marketerStep3InitPhone,    // capture phone     → POST .../init-phone
+    marketerTriggerPhoneOtp,   // trigger phone OTP → POST .../trigger-phone-otp
+    marketerResendPhoneOTP,    // resend phone OTP  → POST .../resend-phone-otp
+    marketerVerifyPhone,       // verify phone OTP  → POST .../verify-phone
+    marketerStep4Finalize,     // finalize account  → POST .../finalize
     clearMarketerFlow,
     loading,
   } = useReduxAuth();
@@ -51,10 +54,7 @@ export default function MarketerRegistrationPage() {
     countryCode: "256",
   });
 
-  // Phone OTP is stored here after step 4 and forwarded in the finalize payload
-  const [phoneOtp, setPhoneOtp] = useState("");
-
-  // ── Step 1 → 2: send email OTP ─────────────────────────────────────────────
+  // ── Step 1 → 2: initiate email OTP ─────────────────────────────────────────
   const handleGetStarted = async (data: {
     firstName: string;
     lastName: string;
@@ -69,7 +69,7 @@ export default function MarketerRegistrationPage() {
     }
   };
 
-  // ── Step 2 → 3: verify email OTP ──────────────────────────────────────────
+  // ── Step 2 → 3: verify email OTP ───────────────────────────────────────────
   const handleVerifyEmail = async (otp: string) => {
     try {
       const flowId = marketerRegistration.registrationFlowId;
@@ -81,7 +81,7 @@ export default function MarketerRegistrationPage() {
     }
   };
 
-  // ── Step 2: resend email OTP ───────────────────────────────────────────────
+  // ── Step 2: resend email OTP ────────────────────────────────────────────────
   const handleResendEmailOtp = async () => {
     try {
       await marketerResendOTP(formData.email);
@@ -90,58 +90,72 @@ export default function MarketerRegistrationPage() {
     }
   };
 
-  // ── Step 3 → 4: send phone OTP ────────────────────────────────────────────
+  // ── Step 3 → 4: capture phone then trigger first phone OTP ─────────────────
+  // The API requires two sequential calls:
+  //   1. POST .../init-phone   — saves the phone number on the flow
+  //   2. POST .../trigger-phone-otp — dispatches the first OTP SMS
   const handlePhoneNext = async (phone: string, countryCode: string) => {
     try {
       const flowId = marketerRegistration.registrationFlowId;
       if (!flowId) throw new Error("Registration flow ID missing");
+
+      // Save phone against the registration flow
       await marketerStep3InitPhone(flowId, `+${countryCode}${phone}`);
+
+      // Trigger the first SMS OTP now that the phone is registered
+      await marketerTriggerPhoneOtp(flowId);
+
       setFormData((p) => ({ ...p, phone, countryCode }));
-      console.log("phone value:", phone, "digits:", phone.replace(/\D/g, "").length);
       setStep("verify-phone");
     } catch {
       // error already toasted by hook
     }
   };
 
-  // ── Step 4 → 5: store OTP locally; verified server-side during finalize ────
-  const handleVerifyPhone = (otp: string) => {
-    setPhoneOtp(otp);
-    setStep("last-info");
-  };
-
-  // ── Step 4: resend phone OTP ───────────────────────────────────────────────
+  // ── Step 4: resend phone OTP ────────────────────────────────────────────────
+  // Uses the dedicated resend endpoint, NOT init-phone again.
   const handleResendPhoneOtp = async () => {
     try {
       const flowId = marketerRegistration.registrationFlowId;
       if (!flowId) return;
-      await marketerStep3InitPhone(
-        flowId,
-        `+${formData.countryCode}${formData.phone}`,
-      );
+      await marketerResendPhoneOTP(flowId);
     } catch {
       // error already toasted by hook
     }
   };
 
-  // ── Step 5 → success: finalize account ────────────────────────────────────
+  // ── Step 4 → 5: verify phone OTP server-side ────────────────────────────────
+  // Previously this was skipped (OTP stored locally). Now we verify with the
+  // server before advancing — POST .../verify-phone
+  const handleVerifyPhone = async (otp: string) => {
+    try {
+      const flowId = marketerRegistration.registrationFlowId;
+      if (!flowId) throw new Error("Registration flow ID missing");
+      await marketerVerifyPhone(flowId, otp);
+      setStep("last-info");
+    } catch {
+      // error already toasted by hook
+    }
+  };
+
+  // ── Step 5 → success: finalize account ─────────────────────────────────────
   const handleFinalize = async (data: {
-  nickname: string;
-  password: string;
-}) => {
-  try {
-    const flowId = marketerRegistration.registrationFlowId;
-    if (!flowId) throw new Error("Registration flow ID missing");
-    await marketerStep4Finalize({
-      registrationFlowId: flowId,
-      password: data.password,
-      nickname: data.nickname,
-    });
-    setStep("success");
-  } catch {
-    // error already toasted by hook
-  }
-};
+    nickname: string;
+    password: string;
+  }) => {
+    try {
+      const flowId = marketerRegistration.registrationFlowId;
+      if (!flowId) throw new Error("Registration flow ID missing");
+      await marketerStep4Finalize({
+        registrationFlowId: flowId,
+        password: data.password,
+        nickname: data.nickname,
+      });
+      setStep("success");
+    } catch {
+      // error already toasted by hook
+    }
+  };
 
   if (step === "success") {
     return (

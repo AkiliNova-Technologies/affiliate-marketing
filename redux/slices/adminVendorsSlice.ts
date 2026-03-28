@@ -6,6 +6,7 @@
 //   POST  /api/v1/admin/vendors/{id}/resend-invite
 //   PATCH /api/v1/admin/vendors/{id}
 //   PATCH /api/v1/admin/vendors/{id}/status
+//   PATCH /api/v1/admin/vendors/{id}/activate
 
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from "@/utils/api";
@@ -79,7 +80,6 @@ export const fetchAdminVendors = createAsyncThunk(
   ) => {
     try {
       const { data } = await api.get("/api/v1/admin/vendors", { params });
-      // API returns { vendors: [...], total?, count? } or array directly
       const vendors = (data.vendors || data.data || data) as Vendor[];
       return {
         vendors,
@@ -105,9 +105,7 @@ export const fetchAdminVendorById = createAsyncThunk(
   },
 );
 
-/** POST /api/v1/admin/vendors/registration
- *  Body: { email, contactFirstName, contactLastName, businessName, contactPhone? }
- */
+/** POST /api/v1/admin/vendors/registration */
 export const registerVendor = createAsyncThunk(
   "adminVendors/register",
   async (
@@ -149,9 +147,7 @@ export const resendVendorInvite = createAsyncThunk(
   },
 );
 
-/** PATCH /api/v1/admin/vendors/{id}
- *  Body uses contactFirstName / contactLastName / contactPhone to match registration API
- */
+/** PATCH /api/v1/admin/vendors/{id} */
 export const updateAdminVendor = createAsyncThunk(
   "adminVendors/update",
   async (
@@ -180,25 +176,9 @@ export const updateAdminVendor = createAsyncThunk(
   },
 );
 
-/** PATCH /api/v1/admin/vendors/{id}/activate
- *  Activates a vendor that is currently in PENDING_ACTIVATION state.
+/** PATCH /api/v1/admin/vendors/{id}/status
+ *  For ACTIVE ↔ SUSPENDED transitions on already-activated vendors.
  */
-export const activatePendingVendor = createAsyncThunk(
-  "adminVendors/activate",
-  async (id: string, { rejectWithValue }) => {
-    try {
-      const { data } = await api.patch(
-        `/api/v1/admin/vendors/${id}/activate`,
-        {},
-      );
-      return data as Vendor;
-    } catch (err) {
-      return rejectWithValue(handleApiError(err));
-    }
-  },
-);
-
-/** PATCH /api/v1/admin/vendors/{id}/status */
 export const updateVendorStatus = createAsyncThunk(
   "adminVendors/updateStatus",
   async (
@@ -209,6 +189,24 @@ export const updateVendorStatus = createAsyncThunk(
       const { data } = await api.patch(`/api/v1/admin/vendors/${id}/status`, {
         status,
       });
+      return data as Vendor;
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
+/** PATCH /api/v1/admin/vendors/{id}/activate
+ *  Only valid when vendor status is PENDING_ACTIVATION.
+ */
+export const activatePendingVendor = createAsyncThunk(
+  "adminVendors/activate",
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const { data } = await api.patch(
+        `/api/v1/admin/vendors/${id}/activate`,
+        {},
+      );
       return data as Vendor;
     } catch (err) {
       return rejectWithValue(handleApiError(err));
@@ -292,21 +290,6 @@ const adminVendorsSlice = createSlice({
         state.error = payload as string;
       })
 
-      .addCase(activatePendingVendor.pending, (state) => {
-        state.actionLoading = true;
-        state.error = null;
-      })
-      .addCase(activatePendingVendor.fulfilled, (state, { payload }) => {
-        state.actionLoading = false;
-        upsertVendor(state.vendors, payload);
-        if (state.selectedVendor?.id === payload.id)
-          state.selectedVendor = payload;
-      })
-      .addCase(activatePendingVendor.rejected, (state, { payload }) => {
-        state.actionLoading = false;
-        state.error = payload as string;
-      })
-
       .addCase(updateAdminVendor.pending, (state) => {
         state.actionLoading = true;
         state.error = null;
@@ -333,6 +316,21 @@ const adminVendorsSlice = createSlice({
           state.selectedVendor = payload;
       })
       .addCase(updateVendorStatus.rejected, (state, { payload }) => {
+        state.actionLoading = false;
+        state.error = payload as string;
+      })
+
+      .addCase(activatePendingVendor.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(activatePendingVendor.fulfilled, (state, { payload }) => {
+        state.actionLoading = false;
+        upsertVendor(state.vendors, payload);
+        if (state.selectedVendor?.id === payload.id)
+          state.selectedVendor = payload;
+      })
+      .addCase(activatePendingVendor.rejected, (state, { payload }) => {
         state.actionLoading = false;
         state.error = payload as string;
       });

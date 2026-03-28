@@ -1,6 +1,4 @@
 // redux/hooks/useReduxAuth.ts
-// Next.js version — uses useRouter from "next/navigation" instead of react-router-dom
-
 "use client";
 
 import { useCallback, useEffect } from "react";
@@ -23,6 +21,9 @@ import {
   marketerVerifyEmail,
   marketerResendEmailOtp,
   marketerInitPhone,
+  marketerTriggerPhoneOtp    as triggerPhoneOtpThunk,
+  marketerResendPhoneOtp     as resendPhoneOtpThunk,
+  marketerVerifyPhone        as verifyPhoneThunk,
   marketerFinalize,
   logout,
   clearError,
@@ -39,31 +40,28 @@ import {
   selectPasswordReset,
   selectUserRole,
   type User,
-  marketerVerifyPhone,
-  marketerResendPhoneOtp,
-  marketerTriggerPhoneOtp,
 } from "@/redux/slices/authSlice";
 
 export function useReduxAuth() {
   const dispatch = useAppDispatch();
   const router = useRouter();
 
-  const user = useAppSelector(selectCurrentUser);
-  const isAuthenticated = useAppSelector(selectIsAuthenticated);
-  const loading = useAppSelector(selectAuthLoading);
-  const initialLoading = useAppSelector(selectInitialLoading);
-  const error = useAppSelector(selectAuthError);
-  const sessions = useAppSelector(selectSessions);
+  const user                 = useAppSelector(selectCurrentUser);
+  const isAuthenticated      = useAppSelector(selectIsAuthenticated);
+  const loading              = useAppSelector(selectAuthLoading);
+  const initialLoading       = useAppSelector(selectInitialLoading);
+  const error                = useAppSelector(selectAuthError);
+  const sessions             = useAppSelector(selectSessions);
   const marketerRegistration = useAppSelector(selectMarketerRegistration);
-  const passwordReset = useAppSelector(selectPasswordReset);
-  const userRole = useAppSelector(selectUserRole);
+  const passwordReset        = useAppSelector(selectPasswordReset);
+  const userRole             = useAppSelector(selectUserRole);
 
-  // ── On mount: mark initial load done & rehydrate from persist ──────────────
+  // ── On mount: rehydrate from persist ────────────────────────────────────────
   useEffect(() => {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
 
-  // ── Core auth ───────────────────────────────────────────────────────────────
+  // ── Core auth ────────────────────────────────────────────────────────────────
 
   const signin = useCallback(
     async (email: string, password: string) => {
@@ -129,7 +127,7 @@ export function useReduxAuth() {
     dispatch(clearError());
   }, [dispatch]);
 
-  // ── Password management ─────────────────────────────────────────────────────
+  // ── Password management ──────────────────────────────────────────────────────
 
   const requestPasswordReset = useCallback(
     async (email: string) => {
@@ -162,7 +160,7 @@ export function useReduxAuth() {
     [dispatch, router],
   );
 
-  // ── Vendor activation ───────────────────────────────────────────────────────
+  // ── Vendor activation ────────────────────────────────────────────────────────
 
   const activateVendorAccount = useCallback(
     async (payload: {
@@ -183,7 +181,7 @@ export function useReduxAuth() {
     [dispatch],
   );
 
-  // ── Sessions ────────────────────────────────────────────────────────────────
+  // ── Sessions ─────────────────────────────────────────────────────────────────
 
   const loadSessions = useCallback(async () => {
     try {
@@ -205,7 +203,7 @@ export function useReduxAuth() {
     [dispatch],
   );
 
-  // ── Uniqueness check ────────────────────────────────────────────────────────
+  // ── Uniqueness check ─────────────────────────────────────────────────────────
 
   const checkFieldUniqueness = useCallback(
     async (params: { email?: string; phone?: string; nickname?: string }) => {
@@ -218,8 +216,9 @@ export function useReduxAuth() {
     [dispatch],
   );
 
-  // ── Marketer registration ───────────────────────────────────────────────────
+  // ── Marketer registration ────────────────────────────────────────────────────
 
+  /** Step 1 — POST .../init-email  → sends email OTP */
   const marketerStep1InitEmail = useCallback(
     async (email: string, firstName: string, lastName: string) => {
       try {
@@ -236,6 +235,7 @@ export function useReduxAuth() {
     [dispatch],
   );
 
+  /** Step 2 — POST .../verify-email  → validates email OTP */
   const marketerStep2VerifyEmail = useCallback(
     async (registrationFlowId: string, otp: string) => {
       try {
@@ -252,6 +252,7 @@ export function useReduxAuth() {
     [dispatch],
   );
 
+  /** Resend email OTP — POST .../resend-email-otp */
   const marketerResendOTP = useCallback(
     async (email: string) => {
       try {
@@ -268,11 +269,31 @@ export function useReduxAuth() {
     [dispatch],
   );
 
+  /** Step 3 — POST .../init-phone  → saves the phone number on the flow */
   const marketerStep3InitPhone = useCallback(
     async (registrationFlowId: string, phone: string) => {
       try {
         const result = await dispatch(
           marketerInitPhone({ registrationFlowId, phone }),
+        ).unwrap();
+        toast.success(result.message || "Phone saved!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Failed to save phone number");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  /** Trigger first phone OTP — POST .../trigger-phone-otp
+   *  Call this immediately after marketerStep3InitPhone succeeds.
+   */
+  const marketerTriggerPhoneOtp = useCallback(
+    async (registrationFlowId: string) => {
+      try {
+        const result = await dispatch(
+          triggerPhoneOtpThunk({ registrationFlowId }),
         ).unwrap();
         toast.success(result.message || "OTP sent to your phone!");
         return result;
@@ -284,6 +305,43 @@ export function useReduxAuth() {
     [dispatch],
   );
 
+  /** Resend phone OTP — POST .../resend-phone-otp
+   *  Use this for "Resend code" on the verify-phone screen. NOT trigger-phone-otp.
+   */
+  const marketerResendPhoneOTP = useCallback(
+    async (registrationFlowId: string) => {
+      try {
+        const result = await dispatch(
+          resendPhoneOtpThunk({ registrationFlowId }),
+        ).unwrap();
+        toast.success(result.message || "Phone OTP resent!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Failed to resend phone OTP");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  /** Step 4 — POST .../verify-phone  → validates SMS OTP server-side */
+  const marketerVerifyPhone = useCallback(
+    async (registrationFlowId: string, otp: string) => {
+      try {
+        const result = await dispatch(
+          verifyPhoneThunk({ registrationFlowId, otp }),
+        ).unwrap();
+        toast.success(result.message || "Phone verified!");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Phone verification failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  /** Step 5 — POST .../finalize  → creates the account */
   const marketerStep4Finalize = useCallback(
     async (payload: {
       registrationFlowId: string;
@@ -302,59 +360,11 @@ export function useReduxAuth() {
     [dispatch],
   );
 
-  const marketerTriggerOTP = useCallback(
-    async (registrationFlowId: string) => {
-      try {
-        const result = await dispatch(
-          marketerTriggerPhoneOtp({ registrationFlowId }),
-        ).unwrap();
-        toast.success(result.message || "Phone OTP sent!");
-        return result;
-      } catch (err: any) {
-        toast.error(err || "Failed to trigger phone OTP");
-        throw err;
-      }
-    },
-    [dispatch],
-  );
-
-  const marketerResendPhoneOTPStep = useCallback(
-    async (registrationFlowId: string) => {
-      try {
-        const result = await dispatch(
-          marketerResendPhoneOtp({ registrationFlowId }),
-        ).unwrap();
-        toast.success(result.message || "Phone OTP resent!");
-        return result;
-      } catch (err: any) {
-        toast.error(err || "Failed to resend phone OTP");
-        throw err;
-      }
-    },
-    [dispatch],
-  );
-
-  const marketerVerifyPhoneStep = useCallback(
-    async (registrationFlowId: string, otp: string) => {
-      try {
-        const result = await dispatch(
-          marketerVerifyPhone({ registrationFlowId, otp }),
-        ).unwrap();
-        toast.success(result.message || "Phone verified!");
-        return result;
-      } catch (err: any) {
-        toast.error(err || "Phone verification failed");
-        throw err;
-      }
-    },
-    [dispatch],
-  );
-
   const clearMarketerFlow = useCallback(() => {
     dispatch(resetMarketerRegistration());
   }, [dispatch]);
 
-  // ── Role / permission helpers ───────────────────────────────────────────────
+  // ── Role / permission helpers ────────────────────────────────────────────────
 
   const hasRole = useCallback(
     (role: string) => !!user?.roles?.includes(role),
@@ -379,13 +389,13 @@ export function useReduxAuth() {
     [user],
   );
 
-  const isVendor = useCallback(() => user?.userType === "VENDOR", [user]);
-  const isMarketer = useCallback(() => user?.userType === "MARKETER", [user]);
+  const isVendor   = useCallback(() => user?.userType === "VENDOR",    [user]);
+  const isMarketer = useCallback(() => user?.userType === "MARKETER",  [user]);
 
   const getFullName = useCallback(() => {
     if (!user) return "";
     const first = user.firstName?.trim() ?? "";
-    const last = user.lastName?.trim() ?? "";
+    const last  = user.lastName?.trim()  ?? "";
     if (first && last) return `${first} ${last}`;
     if (first) return first;
     return user.email.split("@")[0] ?? user.email;
@@ -426,15 +436,15 @@ export function useReduxAuth() {
     // Uniqueness check
     checkFieldUniqueness,
 
-    // Marketer registration steps
-    marketerStep1InitEmail,
-    marketerStep2VerifyEmail,
-    marketerResendOTP,
-    marketerStep3InitPhone,
-    marketerStep4Finalize,
-    marketerTriggerOTP,
-    marketerResendPhoneOTPStep,
-    marketerVerifyPhoneStep,
+    // Marketer registration 
+    marketerStep1InitEmail,      
+    marketerStep2VerifyEmail,    
+    marketerResendOTP,           
+    marketerStep3InitPhone,      
+    marketerTriggerPhoneOtp,     
+    marketerResendPhoneOTP,      
+    marketerVerifyPhone,         
+    marketerStep4Finalize,       
     clearMarketerFlow,
 
     // Helpers

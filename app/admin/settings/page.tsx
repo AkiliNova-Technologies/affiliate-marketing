@@ -48,7 +48,7 @@ function parsePhone(raw: string | undefined): { cc: string; number: string } {
 
 function SuccessBanner({ message, onDismiss }: { message: string; onDismiss: () => void }) {
   return (
-    <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 border-l-4 border-l-green-500 bg-green-50 px-5 py-3.5">
+    <div className="mb-6 flex items-center gap-3 rounded-lg border border-green-200 border-l-4 border-l-green-500 bg-green-50 px-5 py-3.5">
       <IconCheck className="size-5 shrink-0 text-green-600" strokeWidth={2.5} />
       <p className="flex-1 text-sm font-semibold text-green-800">{message}</p>
       <button onClick={onDismiss} className="text-green-400 hover:text-green-600 transition-colors">
@@ -75,7 +75,7 @@ function PasswordInput({
           value={value}
           onChange={e => onChange(e.target.value)}
           placeholder={placeholder}
-          className="h-12 rounded-xl border-gray-200 pr-11 focus-visible:ring-[#F97316] text-sm"
+          className="h-12 rounded-lg border-gray-200 pr-11 focus-visible:ring-[#F97316] text-sm"
         />
         <button
           type="button"
@@ -225,7 +225,7 @@ function GeneralTab() {
 
         <div className="pt-1">
           <p className="text-base font-semibold text-foreground">Change Avatar</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">JPG, PNG, WEBP · Max 3MB</p>
+          <p className="mt-0.5 text-xs text-muted-foreground/40">JPG, PNG, WEBP · Max 3MB</p>
           <div className="mt-3 flex items-center gap-2 flex-wrap">
             <button
               onClick={() => fileRef.current?.click()}
@@ -255,7 +255,7 @@ function GeneralTab() {
           <Input
             value={name}
             onChange={e => setName(e.target.value)}
-            className="h-12 rounded-xl border-gray-200 focus-visible:ring-[#F97316] text-sm"
+            className="h-12 rounded-lg border-gray-200 focus-visible:ring-[#F97316] text-sm"
           />
         </div>
 
@@ -267,12 +267,12 @@ function GeneralTab() {
                 <button
                   type="button"
                   onClick={() => setCcOpen(v => !v)}
-                  className="flex h-12 items-center gap-1.5 rounded-xl border border-gray-200 bg-background px-3 text-sm font-medium hover:border-[#F97316] transition-colors whitespace-nowrap"
+                  className="flex h-12 items-center gap-1.5 rounded-lg border border-gray-200 bg-background px-3 text-sm font-medium hover:border-[#F97316] transition-colors whitespace-nowrap"
                 >
                   {cc} <IconChevronDown className="size-3 text-muted-foreground" />
                 </button>
                 {ccOpen && (
-                  <div className="absolute top-full left-0 z-20 mt-1 w-32 rounded-xl border bg-card shadow-lg py-1">
+                  <div className="absolute top-full left-0 z-20 mt-1 w-32 rounded-lg border bg-card shadow-lg py-1">
                     {COUNTRY_CODES.map(c => (
                       <button key={c.code} type="button"
                         onClick={() => { setCc(c.code); setCcOpen(false) }}
@@ -288,21 +288,11 @@ function GeneralTab() {
                 type="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                className="h-12 w-44 rounded-xl border-gray-200 focus-visible:ring-[#F97316] text-sm"
+                className="h-12 w-44 rounded-lg border-gray-200 focus-visible:ring-[#F97316] text-sm"
               />
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Email — read-only, can't be changed here */}
-      <div className="mt-4 max-w-sm">
-        <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
-        <Input
-          value={user?.email ?? ""}
-          readOnly
-          className="h-12 rounded-xl border-gray-200 bg-muted text-sm text-muted-foreground cursor-not-allowed"
-        />
       </div>
 
       <div className="mt-6">
@@ -310,7 +300,7 @@ function GeneralTab() {
           onClick={handleSave}
           disabled={!isDirty || isSaving}
           className={cn(
-            "h-11 min-w-[140px] rounded-xl text-sm font-semibold transition-all",
+            "h-11 min-w-[140px] rounded-lg text-sm font-semibold transition-all",
             isDirty && !isSaving
               ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
               : "bg-gray-300 text-white cursor-not-allowed pointer-events-none"
@@ -417,7 +407,7 @@ function SecurityTab() {
               onBlur={handleConfirmBlur}
               placeholder="Confirm new password"
               className={cn(
-                "h-12 rounded-xl pr-11 focus-visible:ring-[#F97316] text-sm",
+                "h-12 rounded-lg pr-11 focus-visible:ring-[#F97316] text-sm",
                 confirmError ? "border-red-400 focus-visible:ring-red-300" : "border-gray-200"
               )}
             />
@@ -430,7 +420,7 @@ function SecurityTab() {
           onClick={handleReset}
           disabled={!canSubmit || isResetting}
           className={cn(
-            "h-11 min-w-[160px] rounded-xl text-sm font-semibold transition-all",
+            "h-11 min-w-[160px] rounded-lg text-sm font-semibold transition-all",
             canSubmit && !isResetting
               ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
               : "bg-gray-300 text-white cursor-not-allowed pointer-events-none"
@@ -473,9 +463,9 @@ export default function SettingsPage() {
       <AppSidebar variant="sidebar" />
       <SidebarInset>
         <SiteHeader />
-        <div className="flex flex-1 flex-col p-4 lg:p-6">
+        <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7]">
           <h1 className="mb-5 text-2xl font-bold text-foreground">{h.page}</h1>
-          <div className="w-full max-w-8xl rounded-xl border bg-card p-6">
+          <div className="w-full max-w-8xl rounded-lg border bg-card p-6">
             <div className="mb-5">
               <h2 className="text-lg font-semibold text-foreground">{h.section}</h2>
               <p className="mt-0.5 text-sm text-muted-foreground">{h.sub}</p>

@@ -84,6 +84,45 @@ function getDateJoined(v: Vendor): string {
   return new Date(raw).toLocaleDateString("en-GB");
 }
 
+// ─── Action type ──────────────────────────────────────────────────────────────
+
+/**
+ * Two distinct action types map to two distinct API endpoints:
+ *   "ACTIVATE"  → PATCH /api/v1/admin/vendors/{id}/activate
+ *                 Only valid for PENDING_ACTIVATION vendors.
+ *   "SUSPENDED" → PATCH /api/v1/admin/vendors/{id}/status  { status: "SUSPENDED" }
+ *   "ACTIVE"    → PATCH /api/v1/admin/vendors/{id}/status  { status: "ACTIVE" }
+ *                 Used to reactivate SUSPENDED / DEACTIVATED vendors.
+ */
+type VendorActionValue = "ACTIVATE" | "SUSPENDED" | "ACTIVE";
+
+interface StatusAction {
+  label: string;
+  value: VendorActionValue;
+  danger?: boolean;
+}
+
+const STATUS_ACTIONS: Record<DisplayStatus, StatusAction[]> = {
+  // PENDING_ACTIVATION  →  use the dedicated /activate endpoint
+  "Pending activation": [
+    { label: "Activate", value: "ACTIVATE" },
+    { label: "Suspend",  value: "SUSPENDED", danger: true },
+  ],
+  // ACTIVE  →  only suspension is possible
+  Active: [
+    { label: "Suspend", value: "SUSPENDED", danger: true },
+  ],
+  // SUSPENDED  →  reactivate via /status endpoint
+  Suspended: [
+    { label: "Reactivate", value: "ACTIVE" },
+  ],
+  // DEACTIVATED  →  reactivate via /status endpoint
+  Deactivated: [
+    { label: "Reactivate", value: "ACTIVE" },
+  ],
+  Deleted: [],
+};
+
 // ─── Shared page shell ────────────────────────────────────────────────────────
 
 function PageShell({ children }: { children: React.ReactNode }) {
@@ -272,8 +311,7 @@ function SuspendModal({
             Reason for suspension
           </label>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Provide a brief reason to why you're suspending this vendor's
-            account
+            Provide a brief reason to why you're suspending this vendor's account
           </p>
           <textarea
             value={reason}
@@ -311,20 +349,6 @@ function SuspendModal({
 
 // ─── Vendor drawer ────────────────────────────────────────────────────────────
 
-const STATUS_ACTIONS: Record<
-  DisplayStatus,
-  Array<{ label: string; apiStatus: "ACTIVE" | "SUSPENDED"; danger?: boolean }>
-> = {
-  Active: [{ label: "Suspend", apiStatus: "SUSPENDED", danger: true }],
-  "Pending activation": [
-    { label: "Activate", apiStatus: "ACTIVE" },
-    { label: "Suspend", apiStatus: "SUSPENDED", danger: true },
-  ],
-  Suspended: [{ label: "Activate", apiStatus: "ACTIVE" }],
-  Deactivated: [{ label: "Activate", apiStatus: "ACTIVE" }],
-  Deleted: [],
-};
-
 function VendorDrawer({
   vendor,
   onClose,
@@ -338,7 +362,8 @@ function VendorDrawer({
   onResendOtp: (id: string) => void;
   onEdit: (vendor: Vendor) => void;
 }) {
-  const { changeVendorStatus, vendorsActionLoading } = useReduxAdmin();
+  const { changeVendorStatus, activateVendor, vendorsActionLoading } =
+    useReduxAdmin();
   const [showSuspendModal, setShowSuspendModal] = useState(false);
 
   const displayStatus = toDisplayStatus(vendor.status);
@@ -346,23 +371,38 @@ function VendorDrawer({
   const showOtp = displayStatus === "Pending activation";
   const vendorName = getBusinessName(vendor) || getContactName(vendor);
 
-  const handleSelectAction = (apiStatus: "ACTIVE" | "SUSPENDED") => {
-    if (apiStatus === "SUSPENDED") {
+  /**
+   * Route each action value to the correct API endpoint:
+   *   "ACTIVATE"  → PATCH /vendors/{id}/activate   (pending → active)
+   *   "SUSPENDED" → show modal first, then PATCH /vendors/{id}/status
+   *   "ACTIVE"    → PATCH /vendors/{id}/status      (reactivate)
+   */
+  const handleSelectAction = (value: VendorActionValue) => {
+    if (value === "SUSPENDED") {
       setShowSuspendModal(true);
+    } else if (value === "ACTIVATE") {
+      doActivate();
     } else {
-      doStatusChange(apiStatus);
+      doStatusChange("ACTIVE");
     }
   };
 
-  const doStatusChange = async (
-    apiStatus: "ACTIVE" | "SUSPENDED",
-    _reason?: string,
-  ) => {
+  const doActivate = async () => {
     try {
-      await changeVendorStatus(vendor.id, apiStatus);
+      await activateVendor(vendor.id);
+      onStatusChanged(vendorName, "Active");
+      onClose();
+    } catch {
+      // toast already fired inside activateVendor
+    }
+  };
+
+  const doStatusChange = async (status: "ACTIVE" | "SUSPENDED") => {
+    try {
+      await changeVendorStatus(vendor.id, status);
       onStatusChanged(
         vendorName,
-        apiStatus === "ACTIVE" ? "Active" : "Suspended",
+        status === "ACTIVE" ? "Active" : "Suspended",
       );
       onClose();
     } catch {
@@ -456,12 +496,7 @@ function VendorDrawer({
                   </div>
                   <div className="mt-2 flex items-end justify-between">
                     <p className="text-2xl font-bold text-foreground">
-                      $
-                      {(
-                        vendor.revenue ??
-                        vendor.productsCount ??
-                        0
-                      ).toLocaleString()}
+                      ${(vendor.revenue ?? vendor.productsCount ?? 0).toLocaleString()}
                     </p>
                     <div className="flex items-center gap-1 text-sm font-semibold text-green-600">
                       <IconTrendingUp className="size-4" />
@@ -484,7 +519,7 @@ function VendorDrawer({
                   {actions.length > 0 && (
                     <Select
                       onValueChange={(v) =>
-                        handleSelectAction(v as "ACTIVE" | "SUSPENDED")
+                        handleSelectAction(v as VendorActionValue)
                       }
                       disabled={vendorsActionLoading}
                     >
@@ -498,8 +533,8 @@ function VendorDrawer({
                       <SelectContent>
                         {actions.map((a) => (
                           <SelectItem
-                            key={a.apiStatus}
-                            value={a.apiStatus}
+                            key={a.value}
+                            value={a.value}
                             className={cn(
                               a.danger && "text-red-500 font-medium",
                             )}
@@ -530,7 +565,7 @@ function VendorDrawer({
       {showSuspendModal && (
         <SuspendModal
           onClose={() => setShowSuspendModal(false)}
-          onConfirm={(reason) => doStatusChange("SUSPENDED", reason)}
+          onConfirm={() => doStatusChange("SUSPENDED")}
           isLoading={vendorsActionLoading}
         />
       )}
@@ -964,11 +999,7 @@ function CreateVendorForm({
 function TelescopeIllustration() {
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-6 h-62 w-62 border rounded-full bg-[#EFEFEF]">
-      <img
-        src="/emptystate.png"
-        alt=""
-        className="w-full h-full object-cover"
-      />
+      <img src="/emptystate.png" alt="" className="w-full h-full object-cover" />
     </div>
   );
 }
@@ -1024,13 +1055,11 @@ function VendorsListPage({
     subtitle: string;
   } | null>(null);
 
-  // Debounce search by 400ms
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(t);
   }, [search]);
 
-  // Fetch whenever page or search changes
   useEffect(() => {
     loadVendors({
       page: currentPage,
@@ -1040,26 +1069,26 @@ function VendorsListPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, search]);
 
-  const activeCount = vendors.filter((v) => v.status === "ACTIVE").length;
-  const pendingCount = vendors.filter((v) => v.status === "PENDING").length;
-  const totalRevenue = vendors.reduce((sum, v) => sum + (v.revenue ?? 0), 0);
+  const activeCount   = vendors.filter((v) => v.status === "ACTIVE").length;
+  const pendingCount  = vendors.filter((v) => v.status === "PENDING_ACTIVATION").length;
+  const totalRevenue  = vendors.reduce((sum, v) => sum + (v.revenue ?? 0), 0);
 
-  const handleStatusChanged = (
-    vendorName: string,
-    newStatus: DisplayStatus,
-  ) => {
+  const handleStatusChanged = (vendorName: string, newStatus: DisplayStatus) => {
     setSelectedVendor(null);
-    setBanner(
-      newStatus === "Suspended"
-        ? {
-            message: "Vendor account has been suspended",
-            subtitle: `The reason for suspending "${vendorName}" has been sent to their email`,
-          }
-        : {
-            message: "Vendor account has been activated",
-            subtitle: `"${vendorName}" can now access the platform`,
-          },
-    );
+
+    const banners: Partial<Record<DisplayStatus, { message: string; subtitle: string }>> = {
+      Suspended: {
+        message: "Vendor account has been suspended",
+        subtitle: `The reason for suspending "${vendorName}" has been sent to their email`,
+      },
+      Active: {
+        message: "Vendor account has been activated",
+        subtitle: `"${vendorName}" can now access the platform`,
+      },
+    };
+
+    if (banners[newStatus]) setBanner(banners[newStatus]!);
+
     loadVendors({
       page: currentPage,
       limit: PAGE_SIZE,
@@ -1067,7 +1096,6 @@ function VendorsListPage({
     });
   };
 
-  // ── Column definitions ──────────────────────────────────────────────────────
   const columns: ColumnDef<Vendor>[] = [
     {
       id: "contactPerson",
@@ -1158,14 +1186,12 @@ function VendorsListPage({
       <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7]">
         <h1 className="mb-5 text-2xl font-bold text-foreground">Vendors</h1>
 
-        {/* Stat cards */}
         <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
           {stats.map((s) => (
             <StatCard key={s.title} {...s} />
           ))}
         </div>
 
-        {/* Edit-success banner */}
         {showEditSuccessBanner && (
           <div className="mb-5 flex items-center gap-3 rounded-xl border border-green-200 border-l-4 border-l-green-500 bg-green-50 px-5 py-3.5">
             <svg
@@ -1190,7 +1216,6 @@ function VendorsListPage({
           </div>
         )}
 
-        {/* Status-action banner */}
         {banner && (
           <VendorActionBanner
             message={banner.message}
@@ -1199,7 +1224,6 @@ function VendorsListPage({
           />
         )}
 
-        {/* ── DataTable ── */}
         <div className="rounded-xl">
           <DataTable
             columns={columns}
@@ -1250,7 +1274,6 @@ function VendorsListPage({
         </div>
       </div>
 
-      {/* Vendor drawer */}
       {selectedVendor && (
         <VendorDrawer
           vendor={selectedVendor}

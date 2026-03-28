@@ -86,7 +86,7 @@ export function SiteHeader() {
               </Button>
             </DropdownMenuTrigger>
 
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-48 mt-3">
               <DropdownMenuLabel>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-medium">{fullName}</span>
@@ -95,10 +95,6 @@ export function SiteHeader() {
                   </span>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push(settingsPath)}>
-                Settings
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"

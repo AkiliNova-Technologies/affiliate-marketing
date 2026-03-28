@@ -11,6 +11,8 @@ import {
   IconUser,
   IconChevronUp,
   IconCirclesRelation,
+  IconHeadphones,
+  IconCurrencyDollar,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,6 +41,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { LinkIcon } from "lucide-react";
 
 // ─── Nav data ─────────────────────────────────────────────────────────────────
 
@@ -66,16 +69,21 @@ const navItems = [
   {
     title: "Campaigns",
     url: "/admin/campaigns",
-    icon: IconCirclesRelation,
+    icon: LinkIcon,
   },
   {
-    title: "Payouts",
-    url: "/admin/payouts",
-    icon: IconCreditCard,
+    title: "Revenue",
+    url: "/admin/revenue",
+    icon: IconCurrencyDollar,
     children: [
-      { title: "Pending", url: "/admin/payouts/pending" },
-      { title: "Completed", url: "/admin/payouts/completed" },
+      { title: "Payouts", url: "/admin/revenue/payouts" },
+      { title: "Sales", url: "/admin/revenue/sales" },
     ],
+  },
+  {
+    title: "Support",
+    url: "/admin/support",
+    icon: IconHeadphones,
   },
 ];
 
@@ -290,7 +298,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* Nav */}
       <SidebarContent className="w-full overflow-hidden px-0 py-2">
-        <SidebarMenu className="w-full gap-0.5 overflow-hidden px-0">
+        <SidebarMenu className="w-full gap-0.5 overflow-hidden">
           {navItems.map((item) => (
             <NavItem key={item.title} item={item} pathname={pathname} />
           ))}

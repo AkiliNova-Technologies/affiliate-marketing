@@ -572,7 +572,7 @@ function ProductCard({
           }}
         />
         {/* Heart */}
-        <button
+        {/* <button
           onClick={() => onToggleFavorite(product.id)}
           className="absolute top-3 right-3 flex size-8 items-center justify-center rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors shadow-sm"
         >
@@ -581,7 +581,7 @@ function ProductCard({
           ) : (
             <IconHeart className="size-4 text-gray-500" />
           )}
-        </button>
+        </button> */}
       </div>
 
       {/* Content */}
@@ -622,7 +622,7 @@ function ProductCard({
           onClick={() => onPromote(product)}
           className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#F97316] py-2 text-xs font-semibold text-white hover:bg-[#F97316]/90 transition-colors"
         >
-          <IconBroadcast className="size-3.5" /> Promote
+          <IconBroadcast className="size-3.5" /> Get Affiliate Link
         </button>
       </div>
     </div>

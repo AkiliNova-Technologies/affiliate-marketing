@@ -25,6 +25,7 @@ import { DataTable } from "@/components/data-table";
 import { type ColumnDef } from "@tanstack/react-table";
 import { cn } from "@/lib/utils";
 import { useReduxAuth } from "@/hooks/useReduxAuth";
+import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -244,6 +245,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function MarketerDashboardPage() {
   const { user } = useReduxAuth();
   const firstName = user?.firstName ?? "Victor";
+  const router = useRouter();
 
   return (
     <SidebarProvider
@@ -281,7 +283,7 @@ export default function MarketerDashboardPage() {
             showSelection={false}
             showPagination={false}
             headerAction={
-              <button className="flex items-center gap-2 rounded-lg bg-[#F97316] px-4 py-2 text-sm font-semibold text-white hover:bg-[#F97316]/90 transition-colors whitespace-nowrap">
+              <button className="flex items-center gap-2 rounded-lg bg-[#F97316] px-4 py-2 text-sm font-semibold text-white hover:bg-[#F97316]/90 transition-colors whitespace-nowrap" onClick={()=> router.push("/marketer/campaigns")}>
                 View All My Campaigns <IconExternalLink className="size-4" />
               </button>
             }

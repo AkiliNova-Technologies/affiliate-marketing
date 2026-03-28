@@ -15,6 +15,9 @@
 //   POST   /api/v1/auth/marketer-registration/verify-email
 //   POST   /api/v1/auth/marketer-registration/resend-email-otp
 //   POST   /api/v1/auth/marketer-registration/init-phone
+//   POST   /api/v1/auth/marketer-registration/trigger-phone-otp
+//   POST   /api/v1/auth/marketer-registration/resend-phone-otp
+//   POST   /api/v1/auth/marketer-registration/verify-phone
 //   POST   /api/v1/auth/marketer-registration/finalize
 
 import {
@@ -61,7 +64,14 @@ export interface AuthSession {
 }
 
 interface MarketerRegistrationState {
-  step: "idle" | "email-sent" | "email-verified" | "phone-added" | "phone-verified" | "complete";
+  step:
+    | "idle"
+    | "email-sent"
+    | "email-verified"
+    | "phone-added"
+    | "phone-otp-sent"
+    | "phone-verified"
+    | "complete";
   email: string | null;
   firstName: string | null;
   lastName: string | null;
@@ -418,7 +428,10 @@ export const marketerResendEmailOtp = createAsyncThunk(
   },
 );
 
-/** POST /api/v1/auth/marketer-registration/init-phone */
+/** POST /api/v1/auth/marketer-registration/init-phone
+ *  Captures the phone number and attaches it to the registration flow.
+ *  Must be called before trigger-phone-otp.
+ */
 export const marketerInitPhone = createAsyncThunk(
   "auth/marketerInitPhone",
   async (
@@ -432,6 +445,72 @@ export const marketerInitPhone = createAsyncThunk(
       const { data } = await api.post(
         "/api/v1/auth/marketer-registration/init-phone",
         { registrationFlowId, phone },
+      );
+      return { message: data.message };
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
+/** POST /api/v1/auth/marketer-registration/trigger-phone-otp
+ *  Sends the first SMS OTP after the phone number has been saved via init-phone.
+ */
+export const marketerTriggerPhoneOtp = createAsyncThunk(
+  "auth/marketerTriggerPhoneOtp",
+  async (
+    { registrationFlowId }: { registrationFlowId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/api/v1/auth/marketer-registration/trigger-phone-otp",
+        { registrationFlowId },
+      );
+      return { message: data.message };
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
+/** POST /api/v1/auth/marketer-registration/resend-phone-otp
+ *  Re-sends the SMS OTP. Use this for "Resend code" — NOT trigger-phone-otp.
+ */
+export const marketerResendPhoneOtp = createAsyncThunk(
+  "auth/marketerResendPhoneOtp",
+  async (
+    { registrationFlowId }: { registrationFlowId: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/api/v1/auth/marketer-registration/resend-phone-otp",
+        { registrationFlowId },
+      );
+      return { message: data.message };
+    } catch (err) {
+      return rejectWithValue(handleApiError(err));
+    }
+  },
+);
+
+/** POST /api/v1/auth/marketer-registration/verify-phone
+ *  Validates the SMS OTP server-side. Must succeed before finalize is called.
+ */
+export const marketerVerifyPhone = createAsyncThunk(
+  "auth/marketerVerifyPhone",
+  async (
+    {
+      registrationFlowId,
+      otp,
+    }: { registrationFlowId: string; otp: string },
+    { rejectWithValue },
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/api/v1/auth/marketer-registration/verify-phone",
+        { registrationFlowId, otp },
       );
       return { message: data.message };
     } catch (err) {
@@ -463,63 +542,6 @@ export const marketerFinalize = createAsyncThunk(
   },
 );
 
-/** POST /api/v1/auth/marketer-registration/trigger-phone-otp */
-export const marketerTriggerPhoneOtp = createAsyncThunk(
-  "auth/marketerTriggerPhoneOtp",
-  async (
-    { registrationFlowId }: { registrationFlowId: string },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.post(
-        "/api/v1/auth/marketer-registration/trigger-phone-otp",
-        { registrationFlowId },
-      );
-      return { message: data.message };
-    } catch (err) {
-      return rejectWithValue(handleApiError(err));
-    }
-  },
-);
-
-/** POST /api/v1/auth/marketer-registration/resend-phone-otp */
-export const marketerResendPhoneOtp = createAsyncThunk(
-  "auth/marketerResendPhoneOtp",
-  async (
-    { registrationFlowId }: { registrationFlowId: string },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.post(
-        "/api/v1/auth/marketer-registration/resend-phone-otp",
-        { registrationFlowId },
-      );
-      return { message: data.message };
-    } catch (err) {
-      return rejectWithValue(handleApiError(err));
-    }
-  },
-);
-
-/** POST /api/v1/auth/marketer-registration/verify-phone */
-export const marketerVerifyPhone = createAsyncThunk(
-  "auth/marketerVerifyPhone",
-  async (
-    { registrationFlowId, otp }: { registrationFlowId: string; otp: string },
-    { rejectWithValue },
-  ) => {
-    try {
-      const { data } = await api.post(
-        "/api/v1/auth/marketer-registration/verify-phone",
-        { registrationFlowId, otp },
-      );
-      return { message: data.message };
-    } catch (err) {
-      return rejectWithValue(handleApiError(err));
-    }
-  },
-);
-
 // ─── Slice ─────────────────────────────────────────────────────────────────────
 
 const authSlice = createSlice({
@@ -541,7 +563,6 @@ const authSlice = createSlice({
       if (state.user) state.user = { ...state.user, ...action.payload };
     },
     loadUserFromStorage(state) {
-      // redux-persist handles rehydration — this just marks initial load done
       state.initialLoading = false;
     },
     resetMarketerRegistration(state) {
@@ -720,7 +741,7 @@ const authSlice = createSlice({
         state.error = payload as string;
       });
 
-    // ── marketer registration (shared loading/error via matchers) ──
+    // ── marketer registration step fulfilled cases ──────────────────────────
     builder
       .addCase(marketerInitEmail.fulfilled, (state, { payload }) => {
         state.marketerRegistration.step = "email-sent";
@@ -737,6 +758,10 @@ const authSlice = createSlice({
       })
       .addCase(marketerInitPhone.fulfilled, (state) => {
         state.marketerRegistration.step = "phone-added";
+      })
+      .addCase(marketerTriggerPhoneOtp.fulfilled, (state) => {
+        // Phone number was already captured; OTP is now in flight
+        state.marketerRegistration.step = "phone-otp-sent";
       })
       .addCase(marketerVerifyPhone.fulfilled, (state) => {
         state.marketerRegistration.step = "phone-verified";
@@ -755,7 +780,10 @@ const authSlice = createSlice({
             tokens: payload.tokens,
           });
         }
-      })
+      });
+
+    // ── marketer registration shared loading / error via matchers ───────────
+    builder
       .addMatcher(
         (a) =>
           a.type.startsWith("auth/marketer") && a.type.endsWith("/pending"),
@@ -793,16 +821,12 @@ export const {
 export default authSlice.reducer;
 
 // ─── Selectors ─────────────────────────────────────────────────────────────────
-export const selectCurrentUser = (s: { auth: AuthState }) => s.auth.user;
-export const selectIsAuthenticated = (s: { auth: AuthState }) =>
-  s.auth.isAuthenticated;
-export const selectAuthLoading = (s: { auth: AuthState }) => s.auth.loading;
-export const selectAuthError = (s: { auth: AuthState }) => s.auth.error;
-export const selectInitialLoading = (s: { auth: AuthState }) =>
-  s.auth.initialLoading;
-export const selectSessions = (s: { auth: AuthState }) => s.auth.sessions;
-export const selectMarketerRegistration = (s: { auth: AuthState }) =>
-  s.auth.marketerRegistration;
-export const selectPasswordReset = (s: { auth: AuthState }) =>
-  s.auth.passwordReset;
-export const selectUserRole = (s: { auth: AuthState }) => s.auth.user?.userType;
+export const selectCurrentUser          = (s: { auth: AuthState }) => s.auth.user;
+export const selectIsAuthenticated      = (s: { auth: AuthState }) => s.auth.isAuthenticated;
+export const selectAuthLoading          = (s: { auth: AuthState }) => s.auth.loading;
+export const selectAuthError            = (s: { auth: AuthState }) => s.auth.error;
+export const selectInitialLoading       = (s: { auth: AuthState }) => s.auth.initialLoading;
+export const selectSessions             = (s: { auth: AuthState }) => s.auth.sessions;
+export const selectMarketerRegistration = (s: { auth: AuthState }) => s.auth.marketerRegistration;
+export const selectPasswordReset        = (s: { auth: AuthState }) => s.auth.passwordReset;
+export const selectUserRole             = (s: { auth: AuthState }) => s.auth.user?.userType;

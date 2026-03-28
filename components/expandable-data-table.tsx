@@ -1,4 +1,3 @@
-// components/data-table.tsx
 "use client";
 
 import * as React from "react";
@@ -11,18 +10,20 @@ import {
   useReactTable,
   type ColumnDef,
   type ColumnFiltersState,
+  type Row,
   type SortingState,
   type VisibilityState,
 } from "@tanstack/react-table";
 import {
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconChevronUp,
   IconEye,
   IconFilter,
   IconSearch,
   IconSortDescending,
 } from "@tabler/icons-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -35,7 +36,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
+// ─── Re-exported helpers (same as data-table) ─────────────────────────────────
 
 export function StatusBadge({ status }: { status: string }) {
   const s = status.toLowerCase();
@@ -43,12 +44,10 @@ export function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
     active: "border border-green-500 text-green-700 bg-transparent",
     deleted: "border border-red-400 text-red-500 bg-transparent",
-    suspended:
-      "border border-gray-800 text-gray-800 bg-transparent font-semibold",
+    suspended: "border border-gray-800 text-gray-800 bg-transparent font-semibold",
     deactivated: "border border-gray-300 text-gray-400 bg-transparent",
     "pending approval": "border border-amber-400 text-amber-600 bg-transparent",
-    "pending re-approval":
-      "border border-orange-400 text-orange-500 bg-transparent",
+    "pending re-approval": "border border-orange-400 text-orange-500 bg-transparent",
   };
 
   const matched = Object.keys(styles).find((key) => s.includes(key));
@@ -57,18 +56,11 @@ export function StatusBadge({ status }: { status: string }) {
     : "border border-gray-300 text-gray-500 bg-transparent";
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium",
-        cls,
-      )}
-    >
+    <span className={cn("inline-flex items-center rounded-full px-3 py-0.5 text-xs font-medium", cls)}>
       {status}
     </span>
   );
 }
-
-// ─── View Action ──────────────────────────────────────────────────────────────
 
 export function ViewAction({ onClick }: { onClick?: () => void }) {
   return (
@@ -84,7 +76,7 @@ export function ViewAction({ onClick }: { onClick?: () => void }) {
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
 
-interface PaginationProps {
+interface TablePaginationProps {
   currentPage: number;
   totalPages: number;
   total: number;
@@ -98,23 +90,18 @@ function TablePagination({
   total,
   pageSize,
   onPageChange,
-}: PaginationProps) {
-  // Build page numbers to show: always show 1, 2, 3, ellipsis, last
-  const getPageNumbers = () => {
+}: TablePaginationProps) {
+  const getPageNumbers = (): (number | "ellipsis")[] => {
     const pages: (number | "ellipsis")[] = [];
 
     if (totalPages <= 5) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
-    // Always show first 3
     pages.push(1, 2, 3);
 
-    if (currentPage > 4) {
-      pages.push("ellipsis");
-    }
+    if (currentPage > 4) pages.push("ellipsis");
 
-    // Show current page area if beyond first 3
     if (currentPage > 3 && currentPage < totalPages - 1) {
       if (!pages.includes(currentPage - 1)) pages.push(currentPage - 1);
       if (!pages.includes(currentPage)) pages.push(currentPage);
@@ -124,7 +111,6 @@ function TablePagination({
       pages.push("ellipsis");
     }
 
-    // Always show last page
     if (!pages.includes(totalPages)) pages.push(totalPages);
 
     return pages;
@@ -135,7 +121,7 @@ function TablePagination({
 
   return (
     <div className="flex items-center justify-between border-t px-0 pt-4">
-      <div className="flex items-center justify-between gap-8">
+      <div className="flex items-center gap-8">
         {/* Previous */}
         <button
           onClick={() => onPageChange(currentPage - 1)}
@@ -172,7 +158,8 @@ function TablePagination({
             ),
           )}
         </div>
-        {/* Next + showing count */}
+
+        {/* Next */}
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
@@ -183,22 +170,42 @@ function TablePagination({
         </button>
       </div>
 
-      <div className="flex items-center gap-6">
-        <span className="text-sm text-muted-foreground whitespace-nowrap">
-          Showing {startItem} - {endItem} of {total}
-        </span>
-      </div>
+      <span className="text-sm text-muted-foreground whitespace-nowrap">
+        Showing {startItem} - {endItem} of {total}
+      </span>
     </div>
   );
 }
 
-// ─── DataTable Props ──────────────────────────────────────────────────────────
+// ─── ExpandableDataTable Props ────────────────────────────────────────────────
 
-interface DataTableProps<TData, TValue> {
+export interface ExpandableDataTableProps<TData, TValue> {
+  // ── Data ──
   /** Column definitions */
   columns: ColumnDef<TData, TValue>[];
   /** Row data */
   data: TData[];
+
+  // ── Expandable row ──
+  /**
+   * Render function for the expanded panel content beneath a row.
+   * Receives the full row object. The panel is shown below the row
+   * inside a `<tr><td colSpan={…}>` wrapper.
+   * If omitted, no expand toggle is shown.
+   */
+  renderExpandedRow?: (row: Row<TData>) => React.ReactNode;
+  /**
+   * Controls which row is expanded (by row id). Use with `onExpandedChange`
+   * for controlled mode. Leave undefined for uncontrolled (internal state).
+   */
+  expandedRowId?: string | null;
+  /** Called when a row's expand toggle is clicked. */
+  onExpandedChange?: (rowId: string | null) => void;
+  /**
+   * Extra CSS classes applied to the expanded panel wrapper `<div>`.
+   * Default: `"mx-4 mb-4 rounded-xl border border-gray-100 bg-gray-50/60 px-8 py-5"`
+   */
+  expandedPanelClassName?: string;
 
   // ── Table header / toolbar ──
   /** Title shown above the table */
@@ -261,78 +268,146 @@ interface DataTableProps<TData, TValue> {
   emptyState?: React.ReactNode;
 }
 
-// ─── DataTable ────────────────────────────────────────────────────────────────
+// ─── ExpandableDataTable ──────────────────────────────────────────────────────
 
-export function DataTable<TData, TValue>({
+export function ExpandableDataTable<TData, TValue>({
   columns: columnsProp,
   data,
+
+  // expandable
+  renderExpandedRow,
+  expandedRowId: controlledExpandedRowId,
+  onExpandedChange,
+  expandedPanelClassName,
+
+  // toolbar
   title,
   description,
   headerAction,
+
+  // search
   searchColumn,
   searchPlaceholder = "Search",
+
+  // filters / sort
   showFilters = true,
   showSort = true,
   sortLabel = "Ascending",
+
+  // selection
   showSelection = true,
+
+  // pagination
   showPagination = true,
   pageSize = 10,
   total,
   page: controlledPage,
   onPageChange: controlledOnPageChange,
+
+  // loading
   loading = false,
   skeletonRows = 8,
+
+  // misc
   className,
   emptyMessage = "No results.",
   emptyState,
-}: DataTableProps<TData, TValue>) {
+}: ExpandableDataTableProps<TData, TValue>) {
+  // ── Internal expanded state (uncontrolled) ───────────────────────────────
+  const [internalExpandedRowId, setInternalExpandedRowId] = React.useState<string | null>(null);
+
+  const isControlledExpand = controlledExpandedRowId !== undefined;
+  const expandedRowId = isControlledExpand ? controlledExpandedRowId : internalExpandedRowId;
+
+  const toggleExpand = React.useCallback(
+    (rowId: string) => {
+      const next = expandedRowId === rowId ? null : rowId;
+      if (isControlledExpand) {
+        onExpandedChange?.(next);
+      } else {
+        setInternalExpandedRowId(next);
+        onExpandedChange?.(next);
+      }
+    },
+    [expandedRowId, isControlledExpand, onExpandedChange],
+  );
+
+  // ── Pagination state ─────────────────────────────────────────────────────
   const isServerPaginated =
     controlledPage !== undefined && controlledOnPageChange !== undefined;
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize,
-  });
+  const [pagination, setPagination] = React.useState({ pageIndex: 0, pageSize });
 
-  // Build columns — prepend checkbox column if showSelection
+  // ── Build columns — prepend checkbox, append expand chevron ─────────────
+  const hasExpand = !!renderExpandedRow;
+
   const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
-    if (!showSelection) return columnsProp;
+    const cols: ColumnDef<TData, TValue>[] = [];
 
-    const selectionCol: ColumnDef<TData, TValue> = {
-      id: "__select__",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
-          aria-label="Select all"
-          className="border-gray-300"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(v) => row.toggleSelected(!!v)}
-          aria-label="Select row"
-          className="border-gray-300"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    };
+    // Leading checkbox
+    if (showSelection) {
+      cols.push({
+        id: "__select__",
+        header: ({ table }) => (
+          <Checkbox
+            checked={
+              table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && "indeterminate")
+            }
+            onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)}
+            aria-label="Select all"
+            className="border-gray-300"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label="Select row"
+            className="border-gray-300"
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      } as ColumnDef<TData, TValue>);
+    }
 
-    return [selectionCol, ...columnsProp];
-  }, [columnsProp, showSelection]);
+    // Data columns
+    cols.push(...columnsProp);
 
+    // Trailing expand chevron column
+    if (hasExpand) {
+      cols.push({
+        id: "__expand__",
+        header: () => (
+          <span className="text-xs font-semibold text-muted-foreground"></span>
+        ),
+        cell: ({ row }) => (
+          <button
+            onClick={() => toggleExpand(row.id)}
+            className="flex items-center justify-center size-7 rounded-lg hover:bg-gray-100 transition-colors text-muted-foreground"
+            aria-label={expandedRowId === row.id ? "Collapse row" : "Expand row"}
+          >
+            {expandedRowId === row.id ? (
+              <IconChevronUp className="size-4" />
+            ) : (
+              <IconChevronDown className="size-4" />
+            )}
+          </button>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      } as ColumnDef<TData, TValue>);
+    }
+
+    return cols;
+  }, [columnsProp, showSelection, hasExpand, toggleExpand, expandedRowId]);
+
+  // ── TanStack table instance ───────────────────────────────────────────────
   const table = useReactTable({
     data,
     columns,
@@ -361,7 +436,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Pagination derived values
+  // ── Pagination derived values ─────────────────────────────────────────────
   const effectiveTotal = total ?? data.length;
   const effectivePage = isServerPaginated
     ? (controlledPage ?? 1)
@@ -377,9 +452,13 @@ export function DataTable<TData, TValue>({
     }
   };
 
+  // Total visible columns (for colSpan)
+  const colCount = columns.length;
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <>
-      {/* ── Table or empty state ── */}
+      {/* Empty state — replaces entire table */}
       {!loading && data.length === 0 && emptyState ? (
         <div className="flex items-center justify-center w-full py-6">
           {emptyState}
@@ -392,26 +471,17 @@ export function DataTable<TData, TValue>({
           )}
         >
           {/* ── Toolbar ── */}
-          {(title ||
-            description ||
-            searchColumn ||
-            showFilters ||
-            showSort ||
-            headerAction) && (
+          {(title || description || searchColumn || showFilters || showSort || headerAction) && (
             <div className="flex flex-col gap-4">
-              {/* Title row */}
+              {/* Title + header action row */}
               {(title || description || headerAction) && (
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     {title && (
-                      <h3 className="text-lg font-semibold text-foreground">
-                        {title}
-                      </h3>
+                      <h3 className="text-lg font-semibold text-foreground">{title}</h3>
                     )}
                     {description && (
-                      <p className="text-xs text-muted-foreground">
-                        {description}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{description}</p>
                     )}
                   </div>
                   {headerAction && <div>{headerAction}</div>}
@@ -421,21 +491,17 @@ export function DataTable<TData, TValue>({
               {/* Search + Filters + Sort row */}
               {(searchColumn || showFilters || showSort) && (
                 <div className="flex items-center justify-between gap-3">
-                  {/* Search */}
+                  {/* Search input */}
                   {searchColumn ? (
                     <div className="relative w-full max-w-xs">
                       <IconSearch className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         placeholder={searchPlaceholder}
                         value={
-                          (table
-                            .getColumn(searchColumn)
-                            ?.getFilterValue() as string) ?? ""
+                          (table.getColumn(searchColumn)?.getFilterValue() as string) ?? ""
                         }
                         onChange={(e) =>
-                          table
-                            .getColumn(searchColumn)
-                            ?.setFilterValue(e.target.value)
+                          table.getColumn(searchColumn)?.setFilterValue(e.target.value)
                         }
                         className="h-10 pl-9 text-sm border-gray-200 focus-visible:ring-[#F97316] rounded-lg"
                       />
@@ -455,9 +521,7 @@ export function DataTable<TData, TValue>({
                     {showSort && (
                       <div className="flex items-center gap-1.5 text-sm text-foreground">
                         Sort by:{" "}
-                        <span className="font-medium text-[#F97316]">
-                          {sortLabel}
-                        </span>
+                        <span className="font-medium text-[#F97316]">{sortLabel}</span>
                         <span className="mx-1 text-gray-300">|</span>
                         <IconSortDescending className="size-4 text-[#F97316]" />
                       </div>
@@ -467,6 +531,8 @@ export function DataTable<TData, TValue>({
               )}
             </div>
           )}
+
+          {/* ── Table ── */}
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -482,34 +548,31 @@ export function DataTable<TData, TValue>({
                       >
                         {header.isPlaceholder
                           ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
+                          : flexRender(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     ))}
                   </TableRow>
                 ))}
               </TableHeader>
+
               <TableBody>
                 {loading ? (
-                  // ── Skeleton rows ──
+                  // ── Skeleton rows ──────────────────────────────────────────
                   Array.from({ length: skeletonRows }).map((_, rowIdx) => (
-                    <TableRow
-                      key={`skeleton-${rowIdx}`}
-                      className="border-b border-gray-100"
-                    >
+                    <TableRow key={`skeleton-${rowIdx}`} className="border-b border-gray-100">
                       {columns.map((col, colIdx) => {
-                        const isCheckbox =
-                          (col as { id?: string }).id === "__select__";
-                        const isLast = colIdx === columns.length - 1;
-                        const isNameCol = showSelection
-                          ? colIdx === 1
-                          : colIdx === 0;
+                        const id = (col as { id?: string }).id;
+                        const isCheckbox = id === "__select__";
+                        const isExpand = id === "__expand__";
+                        const isNameCol = showSelection ? colIdx === 1 : colIdx === 0;
+                        const isLast = !hasExpand && colIdx === columns.length - 1;
+
                         return (
                           <TableCell key={colIdx} className="py-3.5">
                             {isCheckbox ? (
                               <div className="size-4 rounded bg-gray-200 animate-pulse" />
+                            ) : isExpand ? (
+                              <div className="size-7 rounded bg-gray-100 animate-pulse" />
                             ) : isNameCol ? (
                               <div className="animate-pulse space-y-2">
                                 <div className="h-3 w-32 rounded bg-gray-200" />
@@ -526,29 +589,55 @@ export function DataTable<TData, TValue>({
                     </TableRow>
                   ))
                 ) : table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                      className="border-b border-gray-100 hover:bg-gray-50/60 transition-colors data-[state=selected]:bg-orange-50/40"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className="py-3.5 text-sm text-foreground"
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
+                  // ── Data rows ──────────────────────────────────────────────
+                  table.getRowModel().rows.map((row) => {
+                    const isExpanded = expandedRowId === row.id;
+
+                    return (
+                      <React.Fragment key={row.id}>
+                        {/* Main data row */}
+                        <TableRow
+                          data-state={row.getIsSelected() && "selected"}
+                          className={cn(
+                            "border-b border-gray-100 transition-colors data-[state=selected]:bg-orange-50/40",
+                            isExpanded ? "bg-white" : "hover:bg-gray-50/60",
                           )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                        >
+                          {row.getVisibleCells().map((cell) => (
+                            <TableCell
+                              key={cell.id}
+                              className="py-3.5 text-sm text-foreground"
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+
+                        {isExpanded && renderExpandedRow && (
+                          <TableRow className="border-0 hover:bg-transparent">
+                            <TableCell
+                              colSpan={colCount}
+                              className="p-0 border-b border-gray-100"
+                            >
+                              <div
+                                className={cn(
+                                  " border border-gray-100 bg-[#F7F7F7] px-8 py-5",
+                                  expandedPanelClassName,
+                                )}
+                              >
+                                {renderExpandedRow(row)}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 ) : (
+                  // ── Empty message (inline, not full empty state) ───────────
                   <TableRow>
                     <TableCell
-                      colSpan={columns.length}
+                      colSpan={colCount}
                       className="h-24 text-center text-sm text-muted-foreground"
                     >
                       {emptyMessage}

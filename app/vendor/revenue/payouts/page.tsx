@@ -51,7 +51,7 @@ const MOCK_PAYOUTS: PayoutRecord[] = [
 // ─── Scenario toggle (for dev preview) ───────────────────────────────────────
 // Set HAS_PAYOUT_METHOD = false to see the empty / not-configured state
 const HAS_PAYOUT_METHOD = true;
-const AVAILABLE_BALANCE = 20000;
+const AVAILABLE_BALANCE = 200;
 const PENDING_BALANCE = 1000;
 const MIN_PAYOUT = 100;
 
@@ -131,9 +131,9 @@ function WithdrawModal({
   const parsedAmount = parseFloat(amount.replace(/,/g, ""));
   const isValid = !isNaN(parsedAmount) && parsedAmount >= MIN_PAYOUT && parsedAmount <= availableBalance;
 
-  const handleWithdrawFull = () => {
-    setAmount(availableBalance.toLocaleString());
-  };
+  // const handleWithdrawFull = () => {
+  //   setAmount(availableBalance.toLocaleString());
+  // };
 
   const handleConfirm = async () => {
     if (!isValid) return;
@@ -171,18 +171,12 @@ function WithdrawModal({
             type="text"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Enter an amount above $100"
+            placeholder="Enter amount to withdraw"
             className="w-full rounded-lg border border-[#F97316]/60 bg-white px-4 py-3 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F97316]/40"
           />
         </div>
 
         {/* Withdraw full balance */}
-        <button
-          onClick={handleWithdrawFull}
-          className="w-full rounded-lg bg-gray-200/70 py-3 text-sm font-semibold text-gray-600 hover:bg-gray-200 transition-colors mb-6"
-        >
-          Withdraw full balance
-        </button>
 
         {/* Actions */}
         <div className="flex items-center gap-3">

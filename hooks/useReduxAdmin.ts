@@ -13,6 +13,7 @@ import {
   resendVendorInvite,
   updateAdminVendor,
   updateVendorStatus,
+  activatePendingVendor,
   clearSelectedVendor,
   selectAdminVendors,
   selectSelectedVendor,
@@ -21,7 +22,6 @@ import {
   selectAdminVendorsTotal,
   selectAdminVendorsActionLoading,
   type Vendor,
-  activatePendingVendor,
 } from "@/redux/slices/adminVendorsSlice";
 
 // ── Admin Marketers
@@ -82,35 +82,35 @@ export function useReduxAdmin() {
 
   // ─── Selectors ─────────────────────────────────────────────────────────────
 
-  const vendors = useAppSelector(selectAdminVendors);
-  const selectedVendor = useAppSelector(selectSelectedVendor);
-  const vendorsLoading = useAppSelector(selectAdminVendorsLoading);
-  const vendorsError = useAppSelector(selectAdminVendorsError);
-  const vendorsTotal = useAppSelector(selectAdminVendorsTotal);
+  const vendors              = useAppSelector(selectAdminVendors);
+  const selectedVendor       = useAppSelector(selectSelectedVendor);
+  const vendorsLoading       = useAppSelector(selectAdminVendorsLoading);
+  const vendorsError         = useAppSelector(selectAdminVendorsError);
+  const vendorsTotal         = useAppSelector(selectAdminVendorsTotal);
   const vendorsActionLoading = useAppSelector(selectAdminVendorsActionLoading);
 
-  const marketers = useAppSelector(selectMarketers);
+  const marketers        = useAppSelector(selectMarketers);
   const selectedMarketer = useAppSelector(selectSelectedMarketer);
   const marketersLoading = useAppSelector(selectMarketersLoading);
-  const marketersError = useAppSelector(selectMarketersError);
-  const marketersTotal = useAppSelector(selectMarketersTotal);
+  const marketersError   = useAppSelector(selectMarketersError);
+  const marketersTotal   = useAppSelector(selectMarketersTotal);
 
-  const productQueue = useAppSelector(selectAdminProductQueue);
-  const selectedProduct = useAppSelector(selectSelectedAdminProduct);
-  const productsLoading = useAppSelector(selectAdminProductsLoading);
-  const productsError = useAppSelector(selectAdminProductsError);
-  const productsTotal = useAppSelector(selectAdminProductsTotal);
-  const productsActionLoading = useAppSelector(selectAdminProductsActionLoading);
+  const productQueue           = useAppSelector(selectAdminProductQueue);
+  const selectedProduct        = useAppSelector(selectSelectedAdminProduct);
+  const productsLoading        = useAppSelector(selectAdminProductsLoading);
+  const productsError          = useAppSelector(selectAdminProductsError);
+  const productsTotal          = useAppSelector(selectAdminProductsTotal);
+  const productsActionLoading  = useAppSelector(selectAdminProductsActionLoading);
 
-  const schedulerStatus = useAppSelector(selectSchedulerStatus);
-  const schedulerLoading = useAppSelector(selectSchedulerLoading);
+  const schedulerStatus     = useAppSelector(selectSchedulerStatus);
+  const schedulerLoading    = useAppSelector(selectSchedulerLoading);
   const schedulerRunLoading = useAppSelector(selectSchedulerRunLoading);
-  const schedulerError = useAppSelector(selectSchedulerError);
+  const schedulerError      = useAppSelector(selectSchedulerError);
 
-  const categories = useAppSelector(selectCategories);
-  const selectedCategory = useAppSelector(selectSelectedCategory);
-  const categoriesLoading = useAppSelector(selectCategoriesLoading);
-  const categoriesError = useAppSelector(selectCategoriesError);
+  const categories           = useAppSelector(selectCategories);
+  const selectedCategory     = useAppSelector(selectSelectedCategory);
+  const categoriesLoading    = useAppSelector(selectCategoriesLoading);
+  const categoriesError      = useAppSelector(selectCategoriesError);
   const categoriesActionLoading = useAppSelector(selectCategoriesActionLoading);
 
   // ─── Vendor actions ─────────────────────────────────────────────────────────
@@ -177,20 +177,10 @@ export function useReduxAdmin() {
     [dispatch]
   );
 
-    const activatePendingVendorById = useCallback(
-    async (id: string) => {
-      try {
-        const result = await dispatch(activatePendingVendor(id)).unwrap();
-        toast.success("Vendor activated!");
-        return result;
-      } catch (err: any) {
-        toast.error(err || "Vendor activation failed");
-        throw err;
-      }
-    },
-    [dispatch]
-  );
-
+  /**
+   * changeVendorStatus — for ACTIVE ↔ SUSPENDED transitions.
+   * Hits PATCH /api/v1/admin/vendors/{id}/status
+   */
   const changeVendorStatus = useCallback(
     async (id: string, status: "SUSPENDED" | "ACTIVE") => {
       try {
@@ -201,6 +191,24 @@ export function useReduxAdmin() {
         return result;
       } catch (err: any) {
         toast.error(err || "Status update failed");
+        throw err;
+      }
+    },
+    [dispatch]
+  );
+
+  /**
+   * activateVendor — only for PENDING_ACTIVATION vendors.
+   * Hits PATCH /api/v1/admin/vendors/{id}/activate
+   */
+  const activateVendor = useCallback(
+    async (id: string) => {
+      try {
+        const result = await dispatch(activatePendingVendor(id)).unwrap();
+        toast.success("Vendor activated successfully");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Vendor activation failed");
         throw err;
       }
     },
@@ -413,8 +421,8 @@ export function useReduxAdmin() {
     addVendor,
     resendInvite,
     editVendor,
-    activatePendingVendorById,
-    changeVendorStatus,
+    changeVendorStatus,   // ACTIVE ↔ SUSPENDED  →  PATCH /{id}/status
+    activateVendor,       // PENDING_ACTIVATION   →  PATCH /{id}/activate
     deselectVendor,
 
     // ── Marketers ──
