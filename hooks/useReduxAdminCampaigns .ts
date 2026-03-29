@@ -16,12 +16,14 @@ import {
   selectMarketerCampaignsTotal,
   selectMarketerCampaignsLoading,
   selectAdminCampaignsError,
+  selectCampaignStats,
 } from "@/redux/slices/adminCampaignsSlice";
 
 export function useReduxAdminCampaigns() {
   const dispatch = useAppDispatch();
 
   const campaigns = useAppSelector(selectAdminCampaigns);
+  const stats = useAppSelector(selectCampaignStats);
   const total = useAppSelector(selectAdminCampaignsTotal);
   const loading = useAppSelector(selectAdminCampaignsLoading);
   const marketerCampaigns = useAppSelector(selectMarketerCampaigns);
@@ -65,6 +67,7 @@ export function useReduxAdminCampaigns() {
 
   return {
     campaigns,
+    stats,
     total,
     loading,
     marketerCampaigns,

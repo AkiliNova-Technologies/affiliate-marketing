@@ -292,7 +292,10 @@ export const checkUniqueness = createAsyncThunk(
   ) => {
     try {
       const { data } = await api.get("/api/v1/auth/check", { params });
-      return data as { available: boolean; field: string };
+      return data as {
+        [x: string]: any;
+        emailAvailable: any; available: boolean; field: string 
+};
     } catch (err) {
       return rejectWithValue(handleApiError(err));
     }

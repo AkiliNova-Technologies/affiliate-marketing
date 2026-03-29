@@ -1,9 +1,28 @@
 // redux/hooks/useReduxAdmin.ts
-// Covers: Admin Vendors, Admin Marketers, Admin Products, Admin Scheduler, Categories
+// Covers: Admin Staff, Admin Vendors, Admin Marketers, Admin Products, Admin Scheduler, Categories
 
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
+
+// ── Admin Staff
+import {
+  createStaff,
+  fetchAdminStaff,
+  fetchAdminStaffById,
+  updateAdminStaff,
+  deleteAdminStaff,
+  suspendAdminStaff,
+  activateAdminStaff,
+  clearSelectedStaff,
+  selectAdminStaff,
+  selectSelectedStaff,
+  selectAdminStaffLoading,
+  selectAdminStaffError,
+  selectAdminStaffTotal,
+  selectAdminStaffActionLoading,
+  type Staff,
+} from "@/redux/slices/adminStaffSlice";
 
 // ── Admin Vendors
 import {
@@ -81,37 +100,146 @@ export function useReduxAdmin() {
   const dispatch = useAppDispatch();
 
   // ─── Selectors ─────────────────────────────────────────────────────────────
+  const staff = useAppSelector(selectAdminStaff);
+  const selectedStaff = useAppSelector(selectSelectedStaff);
+  const staffLoading = useAppSelector(selectAdminStaffLoading);
+  const staffError = useAppSelector(selectAdminStaffError);
+  const staffTotal = useAppSelector(selectAdminStaffTotal);
+  const staffActionLoading = useAppSelector(selectAdminStaffActionLoading);
 
-  const vendors              = useAppSelector(selectAdminVendors);
-  const selectedVendor       = useAppSelector(selectSelectedVendor);
-  const vendorsLoading       = useAppSelector(selectAdminVendorsLoading);
-  const vendorsError         = useAppSelector(selectAdminVendorsError);
-  const vendorsTotal         = useAppSelector(selectAdminVendorsTotal);
+  const vendors = useAppSelector(selectAdminVendors);
+  const selectedVendor = useAppSelector(selectSelectedVendor);
+  const vendorsLoading = useAppSelector(selectAdminVendorsLoading);
+  const vendorsError = useAppSelector(selectAdminVendorsError);
+  const vendorsTotal = useAppSelector(selectAdminVendorsTotal);
   const vendorsActionLoading = useAppSelector(selectAdminVendorsActionLoading);
 
-  const marketers        = useAppSelector(selectMarketers);
+  const marketers = useAppSelector(selectMarketers);
   const selectedMarketer = useAppSelector(selectSelectedMarketer);
   const marketersLoading = useAppSelector(selectMarketersLoading);
-  const marketersError   = useAppSelector(selectMarketersError);
-  const marketersTotal   = useAppSelector(selectMarketersTotal);
+  const marketersError = useAppSelector(selectMarketersError);
+  const marketersTotal = useAppSelector(selectMarketersTotal);
 
-  const productQueue           = useAppSelector(selectAdminProductQueue);
-  const selectedProduct        = useAppSelector(selectSelectedAdminProduct);
-  const productsLoading        = useAppSelector(selectAdminProductsLoading);
-  const productsError          = useAppSelector(selectAdminProductsError);
-  const productsTotal          = useAppSelector(selectAdminProductsTotal);
-  const productsActionLoading  = useAppSelector(selectAdminProductsActionLoading);
+  const productQueue = useAppSelector(selectAdminProductQueue);
+  const selectedProduct = useAppSelector(selectSelectedAdminProduct);
+  const productsLoading = useAppSelector(selectAdminProductsLoading);
+  const productsError = useAppSelector(selectAdminProductsError);
+  const productsTotal = useAppSelector(selectAdminProductsTotal);
+  const productsActionLoading = useAppSelector(
+    selectAdminProductsActionLoading,
+  );
 
-  const schedulerStatus     = useAppSelector(selectSchedulerStatus);
-  const schedulerLoading    = useAppSelector(selectSchedulerLoading);
+  const schedulerStatus = useAppSelector(selectSchedulerStatus);
+  const schedulerLoading = useAppSelector(selectSchedulerLoading);
   const schedulerRunLoading = useAppSelector(selectSchedulerRunLoading);
-  const schedulerError      = useAppSelector(selectSchedulerError);
+  const schedulerError = useAppSelector(selectSchedulerError);
 
-  const categories           = useAppSelector(selectCategories);
-  const selectedCategory     = useAppSelector(selectSelectedCategory);
-  const categoriesLoading    = useAppSelector(selectCategoriesLoading);
-  const categoriesError      = useAppSelector(selectCategoriesError);
+  const categories = useAppSelector(selectCategories);
+  const selectedCategory = useAppSelector(selectSelectedCategory);
+  const categoriesLoading = useAppSelector(selectCategoriesLoading);
+  const categoriesError = useAppSelector(selectCategoriesError);
   const categoriesActionLoading = useAppSelector(selectCategoriesActionLoading);
+
+  // ─── Staff actions ─────────────────────────────────────────────────────────
+
+  const addStaff = useCallback(
+    async (payload: Parameters<typeof createStaff>[0]) => {
+      try {
+        const result = await dispatch(createStaff(payload)).unwrap();
+        toast.success(
+          "Staff account created! They will activate on first login.",
+        );
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Staff creation failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const loadStaff = useCallback(
+    async (params?: Parameters<typeof fetchAdminStaff>[0]) => {
+      try {
+        return await dispatch(fetchAdminStaff(params ?? {})).unwrap();
+      } catch (err: any) {
+        toast.error(err || "Failed to load staff");
+      }
+    },
+    [dispatch],
+  );
+
+  const loadStaffById = useCallback(
+    async (id: string) => {
+      try {
+        return await dispatch(fetchAdminStaffById(id)).unwrap();
+      } catch (err: any) {
+        toast.error(err || "Failed to load staff member");
+      }
+    },
+    [dispatch],
+  );
+
+  const editStaff = useCallback(
+    async (id: string, payload: Partial<Staff>) => {
+      try {
+        const result = await dispatch(
+          updateAdminStaff({ id, payload }),
+        ).unwrap();
+        toast.success("Staff member updated");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Update failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const removeStaff = useCallback(
+    async (id: string) => {
+      try {
+        await dispatch(deleteAdminStaff(id)).unwrap();
+        toast.success("Staff account deleted");
+      } catch (err: any) {
+        toast.error(err || "Delete failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const suspendStaff = useCallback(
+    async (id: string) => {
+      try {
+        const result = await dispatch(suspendAdminStaff(id)).unwrap();
+        toast.success("Staff member suspended");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Suspend failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const activateStaff = useCallback(
+    async (id: string) => {
+      try {
+        const result = await dispatch(activateAdminStaff(id)).unwrap();
+        toast.success("Staff member activated");
+        return result;
+      } catch (err: any) {
+        toast.error(err || "Activation failed");
+        throw err;
+      }
+    },
+    [dispatch],
+  );
+
+  const deselectStaff = useCallback(() => {
+    dispatch(clearSelectedStaff());
+  }, [dispatch]);
 
   // ─── Vendor actions ─────────────────────────────────────────────────────────
 
@@ -123,7 +251,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load vendors");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const loadVendorById = useCallback(
@@ -134,7 +262,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load vendor");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const addVendor = useCallback(
@@ -148,7 +276,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const resendInvite = useCallback(
@@ -160,13 +288,15 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to resend invite");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const editVendor = useCallback(
     async (id: string, payload: Partial<Vendor>) => {
       try {
-        const result = await dispatch(updateAdminVendor({ id, payload })).unwrap();
+        const result = await dispatch(
+          updateAdminVendor({ id, payload }),
+        ).unwrap();
         toast.success("Vendor updated");
         return result;
       } catch (err: any) {
@@ -174,19 +304,17 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
-  /**
-   * changeVendorStatus — for ACTIVE ↔ SUSPENDED transitions.
-   * Hits PATCH /api/v1/admin/vendors/{id}/status
-   */
   const changeVendorStatus = useCallback(
     async (id: string, status: "SUSPENDED" | "ACTIVE") => {
       try {
-        const result = await dispatch(updateVendorStatus({ id, status })).unwrap();
+        const result = await dispatch(
+          updateVendorStatus({ id, status }),
+        ).unwrap();
         toast.success(
-          status === "SUSPENDED" ? "Vendor suspended" : "Vendor reactivated"
+          status === "SUSPENDED" ? "Vendor suspended" : "Vendor reactivated",
         );
         return result;
       } catch (err: any) {
@@ -194,13 +322,9 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
-  /**
-   * activateVendor — only for PENDING_ACTIVATION vendors.
-   * Hits PATCH /api/v1/admin/vendors/{id}/activate
-   */
   const activateVendor = useCallback(
     async (id: string) => {
       try {
@@ -212,7 +336,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const deselectVendor = useCallback(() => {
@@ -229,7 +353,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load marketers");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const loadMarketerById = useCallback(
@@ -240,7 +364,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load marketer");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   // ─── Product queue actions ──────────────────────────────────────────────────
@@ -253,7 +377,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load product queue");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const loadProductById = useCallback(
@@ -264,7 +388,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load product");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const approveProductById = useCallback(
@@ -278,7 +402,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const rejectProductById = useCallback(
@@ -292,7 +416,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const suspendProductById = useCallback(
@@ -306,7 +430,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const reactivateProductById = useCallback(
@@ -320,7 +444,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const deselectProduct = useCallback(() => {
@@ -364,7 +488,7 @@ export function useReduxAdmin() {
         toast.error(err || "Failed to load category");
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const addCategory = useCallback(
@@ -378,11 +502,14 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const editCategory = useCallback(
-    async (id: string, payload: Parameters<typeof updateCategory>[0]["payload"]) => {
+    async (
+      id: string,
+      payload: Parameters<typeof updateCategory>[0]["payload"],
+    ) => {
       try {
         const result = await dispatch(updateCategory({ id, payload })).unwrap();
         toast.success("Category updated");
@@ -392,7 +519,7 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   const removeCategory = useCallback(
@@ -405,10 +532,26 @@ export function useReduxAdmin() {
         throw err;
       }
     },
-    [dispatch]
+    [dispatch],
   );
 
   return {
+    // ── Staff ──
+    staff,
+    selectedStaff,
+    staffLoading,
+    staffError,
+    staffTotal,
+    staffActionLoading,
+    addStaff,
+    loadStaff,
+    loadStaffById,
+    editStaff,
+    removeStaff,
+    suspendStaff,
+    activateStaff,
+    deselectStaff,
+
     // ── Vendors ──
     vendors,
     selectedVendor,
@@ -421,8 +564,8 @@ export function useReduxAdmin() {
     addVendor,
     resendInvite,
     editVendor,
-    changeVendorStatus,   // ACTIVE ↔ SUSPENDED  →  PATCH /{id}/status
-    activateVendor,       // PENDING_ACTIVATION   →  PATCH /{id}/activate
+    changeVendorStatus, // ACTIVE ↔ SUSPENDED  →  PATCH /{id}/status
+    activateVendor, // PENDING_ACTIVATION   →  PATCH /{id}/activate
     deselectVendor,
 
     // ── Marketers ──

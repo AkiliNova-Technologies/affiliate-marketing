@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { TrendingUpIcon } from "lucide-react";
 import { DataTable, StatusBadge, ViewAction } from "@/components/data-table";
 import { useReduxAdmin } from "@/hooks/useReduxAdmin";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ type ProductStatus =
 
 interface ApiProduct {
   id: string;
-  name: string;
+  title: string;
   category?: string | { name: string };
   subCategory?: string;
   price?: number;
@@ -73,13 +74,13 @@ interface ProductLog {
 // ─── Field helpers ────────────────────────────────────────────────────────────
 
 function getProductName(p: ApiProduct): string {
-  return p.name || "—";
+  return p.title || "—";
 }
 function getProductPrice(p: ApiProduct): number {
   return p.price ?? p.priceAmount ?? 0;
 }
 function getProductCurrency(p: ApiProduct): string {
-  return p.currency ?? "UGX";
+  return p.currency ?? "USD";
 }
 function getProductImage(p: ApiProduct): string | undefined {
   return p.imageUrl ?? p.images?.[0];
@@ -726,7 +727,7 @@ function ProductDetailView({
           >
             <IconArrowLeft className="size-5" />
           </button>
-          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <h1 className="text-2xl font-bold text-foreground">Product Details</h1>
         </div>
 
         {/* Product header: name / category / status */}
@@ -801,7 +802,7 @@ function ProductDetailView({
               className={cn(
                 "flex items-center gap-1.5 rounded-md px-4 py-2.5 text-sm font-medium transition-colors border",
                 activeTab === key
-                  ? "bg-white text-foreground border-gray-200 shadow-sm font-semibold"
+                  ? "bg-white text-foreground border-gray-200 shadow-xm font-semibold"
                   : "text-muted-foreground border-transparent hover:text-foreground hover:bg-white/60",
               )}
             >
@@ -898,76 +899,73 @@ function ProductDetailView({
             ))}
         </div>
 
-        {/* Change Status — bottom right, opens upward */}
-        {(isPendingApproval ||
-          isPendingReApproval ||
-          isActive ||
-          isSuspended ||
-          isDeactivated) && (
-          <div className="mt-6 flex justify-end">
-            <div className="relative">
-              <button
-                onClick={() => setShowStatusDropdown(!showStatusDropdown)}
-                disabled={productsActionLoading}
-                className="flex items-center justify-between gap-3 rounded-md border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-foreground hover:border-gray-300 transition-colors shadow-sm disabled:opacity-60 min-w-[160px]"
-              >
-                {productsActionLoading ? (
-                  <>
-                    <Spinner /> Updating…
-                  </>
-                ) : (
-                  <>
-                    <span>Change Status</span>
-                    <span className="text-gray-400 text-xs">▾</span>
-                  </>
-                )}
-              </button>
+        {/* Change Status */}
+{(isPendingApproval ||
+  isPendingReApproval ||
+  isActive ||
+  isSuspended ||
+  isDeactivated) && (
+  <div className="mt-6 flex justify-end">
+    <Select
+      disabled={productsActionLoading}
+      onValueChange={(value) => {
+        switch (value) {
+          case "approve":
+            handleApprove();
+            break;
 
-              {showStatusDropdown && !productsActionLoading && (
-                <div className="absolute bottom-full right-0 mb-1 w-52 rounded-xl border border-gray-100 bg-white shadow-xl overflow-hidden z-10">
-                  {(isPendingApproval || isPendingReApproval) && (
-                    <button
-                      onClick={handleApprove}
-                      className="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-gray-50 transition-colors"
-                    >
-                      Approve Product
-                    </button>
-                  )}
-                  {(isPendingApproval || isPendingReApproval || isActive) && (
-                    <button
-                      onClick={() => {
-                        setShowStatusDropdown(false);
-                        setShowRejectModal(true);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-gray-50 transition-colors"
-                    >
-                      Reject Product
-                    </button>
-                  )}
-                  {isActive && (
-                    <button
-                      onClick={handleSuspend}
-                      className="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-gray-50 transition-colors"
-                    >
-                      Suspend product
-                    </button>
-                  )}
-                  {(isSuspended || isDeactivated) && (
-                    <button
-                      onClick={() => {
-                        setShowStatusDropdown(false);
-                        setShowReinstateModal(true);
-                      }}
-                      className="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-gray-50 transition-colors"
-                    >
-                      Reinstate Product
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+          case "reject":
+            setShowRejectModal(true);
+            break;
+
+          case "suspend":
+            handleSuspend();
+            break;
+
+          case "reinstate":
+            setShowReinstateModal(true);
+            break;
+        }
+      }}
+    >
+      <SelectTrigger className="min-w-[250px] min-h-11 bg-white rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-foreground hover:bg-gray-50 focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 transition-colors">
+        {productsActionLoading ? (
+          <span className="flex items-center gap-2">
+            <Spinner /> Updating...
+          </span>
+        ) : (
+          <SelectValue placeholder="Change Status" />
         )}
+      </SelectTrigger>
+
+      <SelectContent align="end">
+        {(isPendingApproval || isPendingReApproval) && (
+          <SelectItem value="approve">
+            Approve Product
+          </SelectItem>
+        )}
+
+        {(isPendingApproval || isPendingReApproval || isActive) && (
+          <SelectItem value="reject">
+            Reject Product
+          </SelectItem>
+        )}
+
+        {isActive && (
+          <SelectItem value="suspend">
+            Suspend Product
+          </SelectItem>
+        )}
+
+        {(isSuspended || isDeactivated) && (
+          <SelectItem value="reinstate">
+            Reinstate Product
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
+  </div>
+)}
       </div>
 
       {showRejectModal && (
@@ -1043,7 +1041,7 @@ function ProductsListPage({
       ),
     },
     {
-      id: "name",
+      id: "title",
       accessorFn: (p) => getProductName(p),
       header: "Product name",
       cell: ({ row }) => (
@@ -1055,7 +1053,7 @@ function ProductsListPage({
     {
       id: "price",
       accessorFn: (p) => getProductPrice(p),
-      header: "Price (Ugx)",
+      header: "Price (USD)",
       cell: ({ row }) => (
         <span className="text-foreground">
           {getProductPrice(row.original).toLocaleString()}

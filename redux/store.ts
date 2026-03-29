@@ -15,6 +15,7 @@ import storage from "redux-persist/lib/storage";
 
 // ── Existing slices ────────────────────────────────────────────────────────────
 import authReducer from "./slices/authSlice";
+import adminStaffReducer from "./slices/adminStaffSlice";
 import adminVendorsReducer from "./slices/adminVendorsSlice";
 import adminMarketersReducer from "./slices/adminMarketersSlice";
 import adminProductsReducer from "./slices/adminProductsSlice";
@@ -54,6 +55,7 @@ const rootReducer = combineReducers({
   auth: persistReducer(authPersistConfig, authReducer),
 
   // Admin
+  adminStaff: adminStaffReducer,
   adminVendors: adminVendorsReducer,
   adminMarketers: adminMarketersReducer,
   adminProducts: adminProductsReducer,

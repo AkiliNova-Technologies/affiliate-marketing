@@ -17,7 +17,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { TrendingUpIcon } from "lucide-react";
 import { ExpandableDataTable } from "@/components/expandable-data-table";
-import { useReduxAdmin } from "@/hooks/useReduxAdmin";
+import { useReduxAdminCampaigns } from "@/hooks/useReduxAdminCampaigns ";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,7 +31,7 @@ interface Campaign {
   marketerName?: string;
   vendor?: string;
   vendorName?: string;
-  status?: string;
+  campaignStatus?: string;
   totalClicks?: number;
   clicks?: number;
   conversionRate?: number;
@@ -71,7 +71,7 @@ function getCampaignStatus(c: Campaign): CampaignDisplayStatus {
     UNAVAILABLE: "Unavailable",
     INACTIVE: "Inactive",
   };
-  return map[(c.status ?? "").toUpperCase()] ?? c.status ?? "—";
+  return map[(c.campaignStatus ?? "").toUpperCase()] ?? c.campaignStatus ?? "—";
 }
 function getCampaignClicks(c: Campaign): number {
   return c.totalClicks ?? c.clicks ?? 0;
@@ -88,10 +88,12 @@ function getCampaignSales(c: Campaign): number {
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider
-      style={{
-        "--sidebar-width": "calc(var(--spacing) * 64)",
-        "--header-height": "calc(var(--spacing) * 14)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 64)",
+          "--header-height": "calc(var(--spacing) * 14)",
+        } as React.CSSProperties
+      }
     >
       <AppSidebar variant="sidebar" />
       <SidebarInset>
@@ -105,17 +107,48 @@ function PageShell({ children }: { children: React.ReactNode }) {
 // ─── Stat card ────────────────────────────────────────────────────────────────
 
 function StatCard({
-  title, value, change, icon, gradient,
+  title,
+  value,
+  change,
+  icon,
+  gradient,
 }: {
-  title: string; value: string | number; change?: string;
-  icon: React.ReactNode; gradient: string;
+  title: string;
+  value: string | number;
+  change?: string;
+  icon: React.ReactNode;
+  gradient: string;
 }) {
   return (
-    <div className={cn("relative overflow-hidden rounded-xl p-5 text-white", gradient)}>
-      <svg className="absolute inset-0 h-full w-full opacity-20" viewBox="0 0 200 100" preserveAspectRatio="none">
-        <path d="M0 60 Q50 30 100 55 T200 45" fill="none" stroke="white" strokeWidth="1.5" />
-        <path d="M0 75 Q60 45 120 65 T200 60" fill="none" stroke="white" strokeWidth="1" />
-        <path d="M0 90 Q70 60 130 80 T200 75" fill="none" stroke="white" strokeWidth="0.75" />
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl p-5 text-white",
+        gradient,
+      )}
+    >
+      <svg
+        className="absolute inset-0 h-full w-full opacity-20"
+        viewBox="0 0 200 100"
+        preserveAspectRatio="none"
+      >
+        <path
+          d="M0 60 Q50 30 100 55 T200 45"
+          fill="none"
+          stroke="white"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M0 75 Q60 45 120 65 T200 60"
+          fill="none"
+          stroke="white"
+          strokeWidth="1"
+        />
+        <path
+          d="M0 90 Q70 60 130 80 T200 75"
+          fill="none"
+          stroke="white"
+          strokeWidth="0.75"
+        />
       </svg>
       <div className="relative">
         <div className="flex items-center justify-between mb-6">
@@ -146,10 +179,12 @@ function CampaignStatusBadge({ status }: { status: string }) {
     Inactive: "border border-gray-300 text-gray-500 bg-transparent",
   };
   return (
-    <span className={cn(
-      "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
-      styles[status] ?? "border border-gray-300 text-gray-500 bg-transparent"
-    )}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
+        styles[status] ?? "border border-gray-300 text-gray-500 bg-transparent",
+      )}
+    >
       {status}
     </span>
   );
@@ -160,21 +195,16 @@ function CampaignStatusBadge({ status }: { status: string }) {
 function TelescopeEmptyState() {
   return (
     <div className="flex flex-col items-center justify-center gap-3 py-20">
-      <div className="size-56 rounded-full bg-gray-100 flex items-center justify-center">
-        <svg viewBox="0 0 160 160" className="w-40 h-40" fill="none">
-          <circle cx="62" cy="55" r="22" fill="#1a1a1a" />
-          <text x="62" y="63" textAnchor="middle" fontSize="22" fontWeight="bold" fill="white">?</text>
-          <rect x="70" y="90" width="50" height="12" rx="3" fill="#1a1a1a" transform="rotate(-30 70 90)" />
-          <rect x="82" y="104" width="38" height="10" rx="3" fill="#1a1a1a" transform="rotate(-30 82 104)" />
-          <line x1="95" y1="125" x2="80" y2="148" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-          <line x1="95" y1="125" x2="95" y2="148" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-          <line x1="95" y1="125" x2="110" y2="148" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-          {([[112, 55], [125, 70], [118, 42]] as [number, number][]).map(([x, y], i) => (
-            <text key={i} x={x} y={y} fontSize="14" fill="#1a1a1a">+</text>
-          ))}
-        </svg>
+      <div className="flex flex-col items-center justify-center gap-4 p-6 h-40 w-40 border rounded-full bg-[#EFEFEF]">
+        <img
+          src="/emptystate.png"
+          alt=""
+          className="w-full h-full object-cover"
+        />
       </div>
-      <h3 className="text-xl font-semibold text-foreground mt-2">Nothing here yet!</h3>
+      <h3 className="text-xl font-semibold text-foreground mt-2">
+        Nothing here yet!
+      </h3>
       <p className="text-sm text-muted-foreground">
         Once marketers start creating campaigns, they will appear here.
       </p>
@@ -182,35 +212,36 @@ function TelescopeEmptyState() {
   );
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_CAMPAIGNS: Campaign[] = [
-  { id: "1", productName: "Kampala Niles App", productImage: "", marketer: "VanVictor", vendor: "Everything Uganda", status: "ACTIVE", totalClicks: 20000, conversionRate: 89, totalSales: 16000 },
-  { id: "2", productName: "Kampala Niles App", productImage: "", marketer: "Social Gems", vendor: "Social Gems", status: "ACTIVE", totalClicks: 5000, conversionRate: 72, totalSales: 3600 },
-  { id: "3", productName: "The Night I fell in Love-ebook", productImage: "", marketer: "VanVictor", vendor: "Everything Uganda", status: "ACTIVE", totalClicks: 8000, conversionRate: 65, totalSales: 5200 },
-  { id: "4", productName: "Wedding Photography", productImage: "", marketer: "VanVictor", vendor: "World of Africa", status: "ACTIVE", totalClicks: 3200, conversionRate: 45, totalSales: 1440 },
-  { id: "5", productName: "Safe-jaj app", productImage: "", marketer: "VanVictor", vendor: "Horus", status: "PAUSED", totalClicks: 1100, conversionRate: 12, totalSales: 132 },
-  { id: "6", productName: "ESM School Manager", productImage: "", marketer: "VanVictor", vendor: "World of Africa", status: "UNAVAILABLE", totalClicks: 0, conversionRate: 0, totalSales: 0 },
-  { id: "7", productName: "Savanna Records", productImage: "", marketer: "VanVictor", vendor: "Social Gens", status: "ACTIVE", totalClicks: 9400, conversionRate: 58, totalSales: 5452 },
-];
-
 const PAGE_SIZE = 10;
 
 // ─── Campaigns page ───────────────────────────────────────────────────────────
 
 export default function CampaignsPage() {
   const [currentPage, setCurrentPage] = useState(1);
-  const [banner, setBanner] = useState<{ message: string; subtitle: string } | null>(null);
+  const [banner, setBanner] = useState<{
+    message: string;
+    subtitle: string;
+  } | null>(null);
 
-  // Replace with Redux hook when available:
-  // const { campaigns, campaignsLoading, campaignsTotal, loadCampaigns } = useReduxAdmin();
-  const campaigns: Campaign[] = MOCK_CAMPAIGNS;
-  const campaignsTotal = MOCK_CAMPAIGNS.length;
-  const campaignsLoading = false;
+  const {
+    campaigns,
+    stats: campaignStats,
+    total: campaignsTotal,
+    loading: campaignsLoading,
+    loadCampaigns,
+  } = useReduxAdminCampaigns();
 
-  const totalCampaigns = campaignsTotal;
-  const activeCampaigns = campaigns.filter((c) => (c.status ?? "").toUpperCase() === "ACTIVE").length;
-  const suspendedCampaigns = campaigns.filter((c) => (c.status ?? "").toUpperCase() === "SUSPENDED").length;
+  const safeCampaigns = campaignStats.active ?? [];
+
+  const totalCampaigns = campaignStats.total ?? 0;
+
+  const activeCampaigns = safeCampaigns ?? 0 ;
+
+  const suspendedCampaigns = campaignStats.suspended ?? 0;
+
+  useEffect(() => {
+    loadCampaigns();
+  }, [currentPage, loadCampaigns]);
 
   // ── Column definitions ──────────────────────────────────────────────────────
   const columns: ColumnDef<Campaign>[] = [
@@ -245,7 +276,9 @@ export default function CampaignsPage() {
       accessorFn: (c) => getCampaignMarketer(c),
       header: "Marketer",
       cell: ({ row }) => (
-        <span className="text-foreground">{getCampaignMarketer(row.original)}</span>
+        <span className="text-foreground">
+          {getCampaignMarketer(row.original)}
+        </span>
       ),
     },
     {
@@ -253,7 +286,9 @@ export default function CampaignsPage() {
       accessorFn: (c) => getCampaignVendor(c),
       header: "Vendor",
       cell: ({ row }) => (
-        <span className="text-foreground">{getCampaignVendor(row.original)}</span>
+        <span className="text-foreground">
+          {getCampaignVendor(row.original)}
+        </span>
       ),
     },
     {
@@ -281,7 +316,9 @@ export default function CampaignsPage() {
           </div>
           <div className="w-px h-10 bg-gray-200 mx-2 shrink-0" />
           <div className="flex-1 px-6">
-            <p className="text-xs text-muted-foreground mb-1">Conversion rate</p>
+            <p className="text-xs text-muted-foreground mb-1">
+              Conversion rate
+            </p>
             <p className="text-lg font-bold text-foreground">
               {getCampaignConversion(campaign)}%
             </p>
@@ -296,7 +333,9 @@ export default function CampaignsPage() {
         </div>
         {/* View Product Details */}
         <button
-          onClick={() => console.log("View product", campaign.productId ?? campaign.id)}
+          onClick={() =>
+            console.log("View product", campaign.productId ?? campaign.id)
+          }
           className="flex items-center gap-2 rounded-md bg-[#F97316] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#F97316]/90 transition-colors shrink-0"
         >
           View Product Details <IconEye className="size-4" />
@@ -312,8 +351,15 @@ export default function CampaignsPage() {
       value: totalCampaigns.toLocaleString(),
       change: "+15%",
       icon: (
-        <svg className="size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 10l-4 4L6 8" /><circle cx="12" cy="12" r="10" />
+        <svg
+          className="size-5 text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <path d="M15 10l-4 4L6 8" />
+          <circle cx="12" cy="12" r="10" />
         </svg>
       ),
       gradient: "bg-gradient-to-br from-[#F97316] to-[#ea6a0a]",
@@ -323,8 +369,15 @@ export default function CampaignsPage() {
       value: activeCampaigns.toLocaleString(),
       change: "+5%",
       icon: (
-        <svg className="size-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" /><path d="M8 12l3 3 5-5" />
+        <svg
+          className="size-5 text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M8 12l3 3 5-5" />
         </svg>
       ),
       gradient: "bg-gradient-to-br from-[#f08020] to-[#d97015]",
@@ -338,7 +391,7 @@ export default function CampaignsPage() {
     },
     {
       title: "Net Revenue",
-      value: "$40,000",
+      value: `$${campaignStats.revenue?.toLocaleString() ?? "0"}`,
       change: "+5%",
       icon: <IconCurrencyDollar className="size-5 text-white" />,
       gradient: "bg-gradient-to-br from-[#6b3a10] to-[#4a2808]",
@@ -348,26 +401,41 @@ export default function CampaignsPage() {
   return (
     <PageShell>
       <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7] min-h-screen">
-
         {/* Page title */}
-        <h1 className="mb-5 text-2xl font-bold text-foreground">Campaigns overview</h1>
+        <h1 className="mb-5 text-2xl font-bold text-foreground">
+          Campaigns overview
+        </h1>
 
         {/* Stat cards */}
         <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-          {stats.map((s) => <StatCard key={s.title} {...s} />)}
+          {stats.map((s) => (
+            <StatCard key={s.title} {...s} />
+          ))}
         </div>
 
         {/* Action banner */}
         {banner && (
           <div className="mb-5 flex items-start gap-3 rounded-xl border-l-4 border-l-blue-500 border border-blue-100 bg-blue-50 px-5 py-4">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 size-5 shrink-0 text-blue-500">
-              <circle cx="12" cy="12" r="10" /><path d="M12 8v4M12 16h.01" />
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="mt-0.5 size-5 shrink-0 text-blue-500"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v4M12 16h.01" />
             </svg>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-blue-900">{banner.message}</p>
+              <p className="text-sm font-semibold text-blue-900">
+                {banner.message}
+              </p>
               <p className="mt-0.5 text-xs text-blue-700">{banner.subtitle}</p>
             </div>
-            <button onClick={() => setBanner(null)} className="shrink-0 text-blue-400 hover:text-blue-600 transition-colors">
+            <button
+              onClick={() => setBanner(null)}
+              className="shrink-0 text-blue-400 hover:text-blue-600 transition-colors"
+            >
               <IconX className="size-4" />
             </button>
           </div>
@@ -388,8 +456,8 @@ export default function CampaignsPage() {
           sortLabel="Ascending"
           showSelection
           showPagination
-          pageSize={PAGE_SIZE}
-          total={campaignsTotal}
+          pageSize={10}
+          total={campaignStats.total}
           page={currentPage}
           onPageChange={setCurrentPage}
           renderExpandedRow={renderExpandedRow}

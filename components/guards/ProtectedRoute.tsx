@@ -10,15 +10,39 @@ import {
   selectInitialLoading,
   type UserRole,
 } from "@/redux/slices/authSlice";
+import { cn } from "@/lib/utils";
 
 // ─── Loading spinner ─────────────────────────────────────────────────────────
+
+function Spinner({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn("size-4 animate-spin", className)}
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
+    </svg>
+  );
+}
 
 function AuthLoadingScreen() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="flex flex-col items-center gap-3">
-        <div className="size-10 animate-spin rounded-full border-4 border-[#F97316] border-t-transparent" />
-        <p className="text-sm text-muted-foreground">Checking session…</p>
+        <Spinner className="size-8 text-[#F97316]" />
       </div>
     </div>
   );
@@ -28,12 +52,13 @@ function AuthLoadingScreen() {
 
 export const ROLE_DASHBOARDS: Record<string, string> = {
   SUPER_ADMIN: "/admin/dashboard",
-  ADMIN:       "/admin/dashboard",
-  FINANCE:     "/admin/dashboard",
+  ADMIN: "/admin/dashboard",
+  FINANCE: "/admin/dashboard",
   PRODUCT_MODERATOR: "/admin/dashboard",
-  SUPPORT:     "/admin/dashboard",
-  VENDOR:      "/vendor/dashboard",
-  MARKETER:    "/marketer/dashboard",
+  SUPPORT: "/admin/dashboard",
+  STAFF: "/admin/dashboard",
+  VENDOR: "/vendor/dashboard",
+  MARKETER: "/marketer/dashboard",
 };
 
 // ─── Core guard ──────────────────────────────────────────────────────────────
@@ -77,7 +102,15 @@ export function ProtectedRoute({
     if (roles && roles.length > 0 && !roles.includes(user.userType)) {
       router.replace(forbiddenPath);
     }
-  }, [initialLoading, isAuthenticated, user, roles, loginPath, forbiddenPath, router]);
+  }, [
+    initialLoading,
+    isAuthenticated,
+    user,
+    roles,
+    loginPath,
+    forbiddenPath,
+    router,
+  ]);
 
   if (initialLoading) return <AuthLoadingScreen />;
   if (!isAuthenticated || !user) return <AuthLoadingScreen />;
@@ -99,19 +132,11 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
 }
 
 export function VendorGuard({ children }: { children: React.ReactNode }) {
-  return (
-    <ProtectedRoute roles={["VENDOR"]}>
-      {children}
-    </ProtectedRoute>
-  );
+  return <ProtectedRoute roles={["VENDOR"]}>{children}</ProtectedRoute>;
 }
 
 export function MarketerGuard({ children }: { children: React.ReactNode }) {
-  return (
-    <ProtectedRoute roles={["MARKETER"]}>
-      {children}
-    </ProtectedRoute>
-  );
+  return <ProtectedRoute roles={["MARKETER"]}>{children}</ProtectedRoute>;
 }
 
 /**

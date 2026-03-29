@@ -1218,7 +1218,7 @@ function VendorProductsListPage({
   const stats = [
     {
       title: "Total products",
-      value: total ?? 0,
+      value: activeCount ?? 0,
       change: "+15%",
       icon: <IconPackage className="size-5 text-white" />,
       gradient: "bg-gradient-to-br from-[#F97316] to-[#ea6a0a]",
@@ -1232,7 +1232,7 @@ function VendorProductsListPage({
     },
     {
       title: "Total sales",
-      value: activeCount,
+      value: 0,
       change: "+5%",
       icon: <IconTrendingUp className="size-5 text-white" />,
       gradient: "bg-gradient-to-br from-[#c05f10] to-[#a84f0a]",

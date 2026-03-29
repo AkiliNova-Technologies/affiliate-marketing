@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
   IconPackage,
@@ -36,32 +36,13 @@ import { useReduxAuth } from "@/hooks/useReduxAuth";
 import { cn } from "@/lib/utils";
 import { TrendingUpIcon } from "lucide-react";
 import { VendorAppSidebar } from "@/components/vendor-app-sidebar";
+import { useReduxVendor } from "@/hooks/useReduxVendor";
+import { VendorProduct } from "@/redux/slices/vendorProductsSlice";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ProductRow {
-  id: string;
-  image?: string;
-  name: string;
-  price: number;
-  status: string;
-}
-
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const MOCK_PRODUCTS: ProductRow[] = [
-  { id: "1", name: "Kampala Niles App", price: 20000, status: "Active" },
-  {
-    id: "2",
-    name: "Kavuma's Creative Class",
-    price: 400000,
-    status: "Deleted",
-  },
-  { id: "3", name: "Safe-jaj app", price: 10000, status: "Suspended" },
-  { id: "4", name: "ESM School Manager", price: 800000, status: "Deleted" },
-  { id: "5", name: "Savanna Records", price: 100000, status: "Active" },
-  { id: "6", name: "Chimpman Deliveries", price: 250000, status: "Suspended" },
-];
 
 const TREND_DATA = [
   { month: "May", value: 310000 },
@@ -341,7 +322,7 @@ function ProductPerformance() {
 
 // ─── Product Action Center table ──────────────────────────────────────────────
 
-const productColumns: ColumnDef<ProductRow>[] = [
+const productColumns: ColumnDef<VendorProduct>[] = [
   {
     id: "picture",
     header: "Picture",
@@ -361,18 +342,18 @@ const productColumns: ColumnDef<ProductRow>[] = [
   },
   {
     id: "name",
-    accessorKey: "name",
+    accessorKey: "title",
     header: "Product name",
     cell: ({ row }) => (
       <span className="font-medium text-sm text-foreground">
-        {row.original.name}
+        {row.original.title}
       </span>
     ),
   },
   {
     id: "price",
     accessorFn: (r) => r.price,
-    header: "Price (Ugx)",
+    header: "Price (USD)",
     cell: ({ row }) => (
       <span className="text-sm text-foreground">
         {row.original.price.toLocaleString()}
@@ -398,83 +379,12 @@ function EmptyDashboard({ onAddProducts }: { onAddProducts?: () => void }) {
     <div className="flex flex-col items-center justify-center flex-1 py-20 gap-5">
       {/* Telescope illustration */}
       <div className="relative flex items-center justify-center">
-        <div className="size-56 rounded-full bg-gray-100 flex items-center justify-center">
-          <svg viewBox="0 0 200 200" className="size-44" fill="none">
-            {/* Stars */}
-            <text x="120" y="45" fontSize="12" fill="#9ca3af">
-              +
-            </text>
-            <text x="145" y="65" fontSize="10" fill="#9ca3af">
-              +
-            </text>
-            <text x="65" y="155" fontSize="10" fill="#9ca3af">
-              +
-            </text>
-            {/* Question mark ball */}
-            <circle cx="85" cy="75" r="28" fill="#1a1a1a" />
-            <text x="78" y="83" fontSize="24" fontWeight="bold" fill="white">
-              ?
-            </text>
-            {/* Telescope tube */}
-            <rect
-              x="88"
-              y="95"
-              width="55"
-              height="18"
-              rx="4"
-              fill="#d1d5db"
-              transform="rotate(-30 88 95)"
-            />
-            <rect
-              x="100"
-              y="108"
-              width="38"
-              height="14"
-              rx="3"
-              fill="#9ca3af"
-              transform="rotate(-30 100 108)"
-            />
-            {/* Eye piece */}
-            <circle cx="140" cy="130" r="6" fill="#6b7280" />
-            {/* Tripod legs */}
-            <line
-              x1="105"
-              y1="138"
-              x2="85"
-              y2="175"
-              stroke="#1a1a1a"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <line
-              x1="105"
-              y1="138"
-              x2="118"
-              y2="178"
-              stroke="#1a1a1a"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <line
-              x1="105"
-              y1="138"
-              x2="102"
-              y2="178"
-              stroke="#1a1a1a"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            {/* Ground line */}
-            <line
-              x1="75"
-              y1="178"
-              x2="130"
-              y2="178"
-              stroke="#1a1a1a"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
+        <div className="flex items-center justify-center p-6 h-48 w-48 border rounded-full bg-[#EFEFEF]">
+          <img
+            src="/emptystate.png"
+            alt=""
+            className="w-full h-full object-cover"
+          />
         </div>
       </div>
 
@@ -502,8 +412,14 @@ function EmptyDashboard({ onAddProducts }: { onAddProducts?: () => void }) {
 export default function VendorDashboardPage() {
   const { user } = useReduxAuth();
 
-  // Toggle this to test empty state vs populated state
-  const hasProducts = MOCK_PRODUCTS.length > 0;
+  const { inventory, loading, error, total, loadInventory } = useReduxVendor();
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    loadInventory();
+  }, [currentPage, loadInventory]);
+
+  const hasProducts = inventory && inventory.length > 0;
 
   const vendorName = user?.firstName
     ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
@@ -513,7 +429,7 @@ export default function VendorDashboardPage() {
     ? [
         {
           title: "Total Active Products",
-          value: MOCK_PRODUCTS.filter((p) => p.status === "Active").length,
+          value: total ?? 0,
           icon: <IconPackage className="size-5 text-white" />,
           gradient: "bg-gradient-to-br from-[#F97316] to-[#ea6a0a]",
         },
@@ -626,7 +542,9 @@ export default function VendorDashboardPage() {
               <div className="rounded-md">
                 <DataTable
                   columns={productColumns}
-                  data={MOCK_PRODUCTS}
+                  data={inventory}
+                  loading={loading}
+                  skeletonRows={8}
                   title="Product Action Center"
                   description="What's stuck?, What do I need to fix?"
                   headerAction={

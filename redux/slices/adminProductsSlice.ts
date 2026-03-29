@@ -13,7 +13,7 @@ import { handleApiError } from "./authSlice";
 
 export interface AdminProduct {
   id: string;
-  name: string;
+  title: string;
   description?: string;
   vendorId: string;
   vendorName?: string;
