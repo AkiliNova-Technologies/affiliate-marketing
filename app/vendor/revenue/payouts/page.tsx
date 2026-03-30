@@ -20,10 +20,16 @@ import { DataTable } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import api from "@/utils/api";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type PayoutStatus = "Processed" | "Failed" | "Requested" | "In Process" | "Cancelled";
+type PayoutStatus =
+  | "Processed"
+  | "Failed"
+  | "Requested"
+  | "In Process"
+  | "Cancelled";
 
 interface PayoutRecord {
   id: string;
@@ -35,18 +41,67 @@ interface PayoutRecord {
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
 const MOCK_PAYOUTS: PayoutRecord[] = [
-  { id: "PR-00290", amount: "$400",    dateRequested: "11/05/2026", status: "Processed"  },
-  { id: "PR-00289", amount: "$5,400",  dateRequested: "11/05/2026", status: "Failed"     },
-  { id: "PR-00288", amount: "$6,400",  dateRequested: "11/05/2026", status: "Requested"  },
-  { id: "PR-00287", amount: "$500",    dateRequested: "10/05/2026", status: "In Process" },
-  { id: "PR-00286", amount: "$5,400",  dateRequested: "10/05/2026", status: "Failed"     },
-  { id: "PR-00285", amount: "$5,460",  dateRequested: "10/05/2026", status: "Cancelled"  },
-  { id: "PR-00284", amount: "$2,00",   dateRequested: "10/05/2026", status: "Processed"  },
-  { id: "PR-00283", amount: "$4,00",   dateRequested: "10/05/2026", status: "Requested"  },
-  { id: "PR-00282", amount: "$55,600", dateRequested: "10/05/2026", status: "In Process" },
-  { id: "PR-00281", amount: "$2,400",  dateRequested: "10/05/2026", status: "Cancelled"  },
+  {
+    id: "PR-00290",
+    amount: "$400",
+    dateRequested: "11/05/2026",
+    status: "Processed",
+  },
+  {
+    id: "PR-00289",
+    amount: "$5,400",
+    dateRequested: "11/05/2026",
+    status: "Failed",
+  },
+  {
+    id: "PR-00288",
+    amount: "$6,400",
+    dateRequested: "11/05/2026",
+    status: "Requested",
+  },
+  {
+    id: "PR-00287",
+    amount: "$500",
+    dateRequested: "10/05/2026",
+    status: "In Process",
+  },
+  {
+    id: "PR-00286",
+    amount: "$5,400",
+    dateRequested: "10/05/2026",
+    status: "Failed",
+  },
+  {
+    id: "PR-00285",
+    amount: "$5,460",
+    dateRequested: "10/05/2026",
+    status: "Cancelled",
+  },
+  {
+    id: "PR-00284",
+    amount: "$2,00",
+    dateRequested: "10/05/2026",
+    status: "Processed",
+  },
+  {
+    id: "PR-00283",
+    amount: "$4,00",
+    dateRequested: "10/05/2026",
+    status: "Requested",
+  },
+  {
+    id: "PR-00282",
+    amount: "$55,600",
+    dateRequested: "10/05/2026",
+    status: "In Process",
+  },
+  {
+    id: "PR-00281",
+    amount: "$2,400",
+    dateRequested: "10/05/2026",
+    status: "Cancelled",
+  },
 ];
-
 
 // ─── Scenario toggle (for dev preview) ───────────────────────────────────────
 // Set HAS_PAYOUT_METHOD = false to see the empty / not-configured state
@@ -59,14 +114,19 @@ const MIN_PAYOUT = 100;
 
 function PayoutStatusBadge({ status }: { status: PayoutStatus }) {
   const styles: Record<PayoutStatus, string> = {
-    Processed:    "border border-teal-500 text-teal-600",
-    Failed:       "border border-orange-500 text-orange-600",
-    Requested:    "border border-gray-400 text-gray-600",
+    Processed: "border border-teal-500 text-teal-600",
+    Failed: "border border-orange-500 text-orange-600",
+    Requested: "border border-gray-400 text-gray-600",
     "In Process": "border border-blue-300 text-blue-600",
-    Cancelled:    "border border-red-500 text-red-600",
+    Cancelled: "border border-red-500 text-red-600",
   };
   return (
-    <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", styles[status])}>
+    <span
+      className={cn(
+        "text-xs font-medium px-2 py-0.5 rounded-full",
+        styles[status],
+      )}
+    >
       {status}
     </span>
   );
@@ -93,7 +153,9 @@ const PAYOUT_COLUMNS: ColumnDef<PayoutRecord, unknown>[] = [
     accessorKey: "dateRequested",
     header: "Date Requested",
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.dateRequested}</span>
+      <span className="text-muted-foreground">
+        {row.original.dateRequested}
+      </span>
     ),
   },
   {
@@ -108,8 +170,19 @@ const PAYOUT_COLUMNS: ColumnDef<PayoutRecord, unknown>[] = [
 function Spinner() {
   return (
     <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+      <circle
+        className="opacity-25"
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="4"
+      />
+      <path
+        className="opacity-75"
+        fill="currentColor"
+        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+      />
     </svg>
   );
 }
@@ -129,7 +202,10 @@ function WithdrawModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const parsedAmount = parseFloat(amount.replace(/,/g, ""));
-  const isValid = !isNaN(parsedAmount) && parsedAmount >= MIN_PAYOUT && parsedAmount <= availableBalance;
+  const isValid =
+    !isNaN(parsedAmount) &&
+    parsedAmount >= MIN_PAYOUT &&
+    parsedAmount <= availableBalance;
 
   // const handleWithdrawFull = () => {
   //   setAmount(availableBalance.toLocaleString());
@@ -142,7 +218,9 @@ function WithdrawModal({
       await api.post("/api/v1/payouts/withdraw", { amount: parsedAmount });
       onSuccess(parsedAmount);
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Withdrawal failed. Please try again.");
+      toast.error(
+        err?.response?.data?.message || "Withdrawal failed. Please try again.",
+      );
       setIsSubmitting(false);
     }
   };
@@ -193,10 +271,17 @@ function WithdrawModal({
               "flex-1 rounded-md py-3 text-sm font-semibold text-white transition-colors",
               isValid && !isSubmitting
                 ? "bg-[#1a1a1a] hover:bg-[#333]"
-                : "bg-gray-300 cursor-not-allowed"
+                : "bg-gray-300 cursor-not-allowed",
             )}
           >
-            {isSubmitting ? <span className="flex items-center justify-center gap-2"><Spinner />Processing…</span> : "Confirm"}
+            {isSubmitting ? (
+              <span className="flex items-center justify-center gap-2">
+                <Spinner />
+                Processing…
+              </span>
+            ) : (
+              "Confirm"
+            )}
           </button>
         </div>
       </div>
@@ -226,11 +311,13 @@ function WithdrawSuccessModal({
 
         {/* High-five illustration */}
         <div className="flex justify-center mb-6">
-          <img src="./success.png" alt="" className="h-38 w-38"/>
+          <img src="./success.png" alt="" className="h-38 w-38" />
         </div>
 
         <h2 className="text-2xl font-bold text-center text-foreground mb-2">
-          Your ${amount.toLocaleString()} withdrawal<br />has been Initiated
+          Your ${amount.toLocaleString()} withdrawal
+          <br />
+          has been Initiated
         </h2>
         <p className="text-sm text-center text-muted-foreground mb-8">
           Your request will be processed within 2-3 working days
@@ -260,9 +347,40 @@ export default function VendorPayoutsPage() {
   const [showPending, setShowPending] = useState(true);
 
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+
+  // Step-based withdraw: hidden → input visible → submitting
+  const [showWithdrawInput, setShowWithdrawInput] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+
   const [withdrawnAmount, setWithdrawnAmount] = useState<number | null>(null);
 
   const canWithdraw = hasPayoutMethod && AVAILABLE_BALANCE >= MIN_PAYOUT;
+  const parsedAmount = parseFloat(withdrawAmount.replace(/,/g, ""));
+  const isFullBalance = parsedAmount === AVAILABLE_BALANCE;
+  const isValidAmount =
+    !isNaN(parsedAmount) &&
+    parsedAmount >= MIN_PAYOUT &&
+    parsedAmount <= AVAILABLE_BALANCE;
+  const withdrawBtnLabel = isFullBalance ? "Withdraw full balance" : "Withdraw";
+  const withdrawBtnDisabled = !isValidAmount || isWithdrawing;
+
+  const handleWithdraw = async () => {
+    if (withdrawBtnDisabled) return;
+    setIsWithdrawing(true);
+    try {
+      await api.post("/api/v1/payouts/withdraw", { amount: parsedAmount });
+      setWithdrawAmount("");
+      setShowWithdrawInput(false);
+      setWithdrawnAmount(parsedAmount);
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || "Withdrawal failed. Please try again.",
+      );
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
 
   const handleWithdrawSuccess = (amount: number) => {
     setShowWithdrawModal(false);
@@ -271,16 +389,17 @@ export default function VendorPayoutsPage() {
 
   return (
     <SidebarProvider
-      style={{
-        "--sidebar-width": "calc(var(--spacing) * 56)",
-        "--header-height": "calc(var(--spacing) * 14)",
-      } as React.CSSProperties}
+      style={
+        {
+          "--sidebar-width": "calc(var(--spacing) * 56)",
+          "--header-height": "calc(var(--spacing) * 14)",
+        } as React.CSSProperties
+      }
     >
       <VendorAppSidebar variant="sidebar" />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7] min-h-screen">
-
           {/* Page title */}
           <div className="flex items-center gap-3 mb-4">
             {/* <button
@@ -294,28 +413,45 @@ export default function VendorPayoutsPage() {
 
           {/* Banner */}
           {showBanner && (
-            <div className={cn(
-              "mb-4 flex items-center gap-3 rounded-md border px-5 py-3.5",
-              hasPayoutMethod
-                ? "border-green-200 border-l-4 border-l-green-500 bg-green-50"
-                : "border-yellow-200 border-l-4 border-l-yellow-400 bg-yellow-50"
-            )}>
+            <div
+              className={cn(
+                "mb-4 flex items-center gap-3 rounded-md border px-5 py-3.5",
+                hasPayoutMethod
+                  ? "border-green-200 border-l-4 border-l-green-500 bg-green-50"
+                  : "border-yellow-200 border-l-4 border-l-yellow-400 bg-yellow-50",
+              )}
+            >
               {hasPayoutMethod ? (
                 <div className="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-green-500">
-                  <IconCheck className="size-3 text-green-600" strokeWidth={3} />
+                  <IconCheck
+                    className="size-3 text-green-600"
+                    strokeWidth={3}
+                  />
                 </div>
               ) : (
                 <IconAlertTriangle className="size-5 shrink-0 text-yellow-500" />
               )}
               <p className="flex-1 text-sm font-semibold text-foreground">
                 {hasPayoutMethod ? (
-                  <>Payout method configured. Your Bank Account ends in ***6789.{" "}
-                    <a href="/settings" className="underline underline-offset-2 hover:text-[#F97316] transition-colors">Confirm</a>
+                  <>
+                    Payout method configured. Your Bank Account ends in ***6789.{" "}
+                    <a
+                      href="/settings"
+                      className="underline underline-offset-2 hover:text-[#F97316] transition-colors"
+                    >
+                      Confirm
+                    </a>
                   </>
                 ) : (
-                  <>Your Payout method is not set up. Go to{" "}
-                    <a href="/settings" className="underline underline-offset-2 hover:text-[#F97316] transition-colors font-bold">Settings</a>
-                    {" "}to configure.
+                  <>
+                    Your Payout method is not set up. Go to{" "}
+                    <a
+                      href="/settings"
+                      className="underline underline-offset-2 hover:text-[#F97316] transition-colors font-bold"
+                    >
+                      Settings
+                    </a>{" "}
+                    to configure.
                   </>
                 )}
               </p>
@@ -328,53 +464,120 @@ export default function VendorPayoutsPage() {
             </div>
           )}
 
-          {/* Balance cards */}
-          <div className="rounded-md border bg-[#F5F2EF] mb-4 overflow-hidden">
+          {/* ── Balance card ── */}
+          <div className="rounded-md border bg-[#F5F2EF] mb-5 overflow-hidden">
             <div className="grid grid-cols-1 sm:grid-cols-2">
-              {/* Available Balance */}
-              <div className="p-6 border-b sm:border-b-0 sm:border-r border-gray-100">
+              {/* Available Balance — inline withdraw */}
+              <div className="p-6 border-b sm:border-b-0 sm:border-r border-gray-200">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-muted-foreground">Available Balance</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Available Balance
+                  </span>
                   <button
                     onClick={() => setShowAvailable((v) => !v)}
                     className="text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showAvailable ? <IconEye className="size-5" /> : <IconEyeOff className="size-5" />}
+                    {showAvailable ? (
+                      <IconEye className="size-5" />
+                    ) : (
+                      <IconEyeOff className="size-5" />
+                    )}
                   </button>
                 </div>
                 <p className="text-3xl font-bold text-foreground mb-5">
-                  {showAvailable ? `$ ${AVAILABLE_BALANCE.toLocaleString()}` : "$ ••••••"}
+                  {showAvailable
+                    ? `$ ${AVAILABLE_BALANCE.toLocaleString()}`
+                    : "$ ••••••"}
                 </p>
-                {canWithdraw ? (
-                  <button
-                    onClick={() => setShowWithdrawModal(true)}
-                    className="w-full rounded-lg bg-[#1a1a1a] py-3 text-sm font-semibold text-white hover:bg-[#333] transition-colors"
-                  >
-                    Withdraw now
-                  </button>
-                ) : (
+
+                {!canWithdraw ? (
+                  /* Balance below minimum */
                   <button
                     disabled
                     className="w-full rounded-lg bg-gray-200 py-3 text-sm font-semibold text-gray-500 cursor-not-allowed"
                   >
                     Minimum payout is ${MIN_PAYOUT}
                   </button>
+                ) : !showWithdrawInput ? (
+                  /* Step 1: initial state — just "Withdraw now" */
+                  <button
+                    onClick={() => setShowWithdrawInput(true)}
+                    className="w-full rounded-lg bg-[#1a1a1a] py-3 text-sm font-semibold text-white hover:bg-[#333] transition-colors"
+                  >
+                    Withdraw now
+                  </button>
+                ) : (
+                  /* Step 2: input visible */
+                  <div className="flex flex-col gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">
+                        Withdraw amount{" "}
+                        <span className="text-[#F97316]">*</span>
+                      </label>
+                      <Input
+                        type="text"
+                        value={withdrawAmount}
+                        onChange={(e) => setWithdrawAmount(e.target.value)}
+                        placeholder="Enter amount to withdraw"
+                        autoFocus
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#F97316]"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setShowWithdrawInput(false);
+                          setWithdrawAmount("");
+                        }}
+                        className="shrink-0 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-foreground hover:border-gray-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      {/* Dynamic label: "Withdraw" or "Withdraw full balance" */}
+                      <button
+                        onClick={handleWithdraw}
+                        disabled={withdrawBtnDisabled}
+                        className={cn(
+                          "flex-1 rounded-lg py-3 text-sm font-semibold text-white transition-colors",
+                          !withdrawBtnDisabled
+                            ? "bg-[#1a1a1a] hover:bg-[#333]"
+                            : "bg-gray-300 cursor-not-allowed",
+                        )}
+                      >
+                        {isWithdrawing ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Spinner /> Processing…
+                          </span>
+                        ) : (
+                          withdrawBtnLabel
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
               {/* Pending Release Balance */}
               <div className="p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm font-medium text-muted-foreground">Pending Release Balance</span>
+                  <span className="text-sm font-medium text-muted-foreground">
+                    Pending Release Balance
+                  </span>
                   <button
                     onClick={() => setShowPending((v) => !v)}
                     className="text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showPending ? <IconEye className="size-5" /> : <IconEyeOff className="size-5" />}
+                    {showPending ? (
+                      <IconEye className="size-5" />
+                    ) : (
+                      <IconEyeOff className="size-5" />
+                    )}
                   </button>
                 </div>
                 <p className="text-3xl font-bold text-foreground">
-                  {showPending ? `$ ${PENDING_BALANCE.toLocaleString()}` : "$ ••••••"}
+                  {showPending
+                    ? `$ ${PENDING_BALANCE.toLocaleString()}`
+                    : "$ ••••••"}
                 </p>
               </div>
             </div>
@@ -408,16 +611,19 @@ export default function VendorPayoutsPage() {
             }
             emptyState={
               <div className="flex flex-col items-center justify-center gap-4 py-12">
-               <div className="flex items-center justify-center p-6 h-48 w-48 border rounded-full bg-[#EFEFEF]">
+                <div className="flex items-center justify-center p-6 h-48 w-48 border rounded-full bg-[#EFEFEF]">
                   <img
                     src="/emptystate.png"
                     alt=""
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-lg font-bold text-foreground mb-1">No payout history found</h3>
+                <h3 className="text-lg font-bold text-foreground mb-1">
+                  No payout history found
+                </h3>
                 <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-                  Your payout Information will appear here after initiating a withdraw
+                  Your payout Information will appear here after initiating a
+                  withdraw
                 </p>
                 <button className="rounded-md bg-[#1a1a1a] px-8 py-3 text-sm font-semibold text-white hover:bg-[#333] transition-colors">
                   Add products

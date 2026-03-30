@@ -23,6 +23,7 @@ import { DataTable } from "@/components/data-table";
 import { cn } from "@/lib/utils";
 import api from "@/utils/api";
 import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -492,13 +493,13 @@ export default function MarketerPayoutsPage() {
                         Withdraw amount{" "}
                         <span className="text-[#F97316]">*</span>
                       </label>
-                      <input
+                      <Input
                         type="text"
                         value={withdrawAmount}
                         onChange={(e) => setWithdrawAmount(e.target.value)}
                         placeholder="Enter amount to withdraw"
                         autoFocus
-                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#F97316]/40"
+                        className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#F97316]"
                       />
                     </div>
                     <div className="flex gap-2">
