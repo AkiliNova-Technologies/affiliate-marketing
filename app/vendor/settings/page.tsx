@@ -571,52 +571,100 @@ function SecurityTab() {
 
 type PayoutMethod = "bank" | "mobile";
 
+const PREFIX_TO_PROVIDER: Record<string, string> = {
+  // MTN Uganda
+  "076": "MTN",
+  "077": "MTN",
+  "078": "MTN",
+  "039": "MTN",
+  "031": "MTN",
+ 
+  // Airtel Uganda
+  "070": "Airtel",
+  "075": "Airtel",
+  "074": "Airtel",
+  "020": "Airtel",
+ 
+  // Lycamobile Uganda
+  "026": "Lycamobile",
+};
+ 
+function detectProvider(localNumber: string): string {
+  let digits = localNumber.replace(/\D/g, "");
+  if (!digits) return "";
+ 
+
+  if (!digits.startsWith("0")) {
+    digits = "0" + digits;
+  }
+ 
+  if (digits.length < 3) return "";
+  const prefix = digits.slice(0, 3);
+  return PREFIX_TO_PROVIDER[prefix] ?? "";
+}
+
+// ─── PayoutTab ────────────────────────────────────────────────────────────────
+
 function PayoutTab() {
   const [method, setMethod] = useState<PayoutMethod>("bank");
-
+ 
   // Bank fields
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [confirmAccount, setConfirmAccount] = useState("");
   const [swiftCode, setSwiftCode] = useState("");
-
+ 
   // Mobile Money fields
   const [mobileNumber, setMobileNumber] = useState("");
+  const [mobileCc, setMobileCc] = useState("256");
   const [serviceProvider, setServiceProvider] = useState("");
   const [registeredName, setRegisteredName] = useState("");
-
+ 
   const [isSaving, setIsSaving] = useState(false);
-
+ 
+  // ── Auto-detect service provider whenever mobileNumber changes ──────────────
+  // Accepts a plain string value to match PhoneField's setPhone: (v: string) => void
+  const handleMobileNumberChange = (val: string) => {
+    setMobileNumber(val);
+    setServiceProvider(detectProvider(val));
+  };
+ 
   const handleSave = async () => {
     setIsSaving(true);
     try {
       if (method === "bank") {
         await api.post("/api/v1/profile/payout/bank", {
-          bankName, accountNumber, swiftCode,
+          bankName,
+          accountNumber,
+          swiftCode,
         });
       } else {
         await api.post("/api/v1/profile/payout/mobile", {
-          mobileNumber, serviceProvider, registeredName,
+          mobileNumber,
+          serviceProvider,
+          registeredName,
         });
       }
       toast.success("Payout information saved successfully");
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save payout information");
+      toast.error(
+        err?.response?.data?.message || "Failed to save payout information"
+      );
     } finally {
       setIsSaving(false);
     }
   };
-
-  // Todo: Add form validation and pre-fill existing payout information if available especially for mobile money which is more common in our markets
-
+ 
   return (
     <div>
       {/* Heading */}
-      <h3 className="text-2xl font-bold text-foreground mb-1">Payment Information</h3>
+      <h3 className="text-2xl font-bold text-foreground mb-1">
+        Payment Information
+      </h3>
       <p className="text-sm text-muted-foreground mb-6">
         Choose either Bank or mobile Money or to receive your payments
       </p>
-
+ 
       {/* Sub-tab toggle */}
       <div className="flex items-center gap-3 mb-6">
         {/* Bank tab */}
@@ -630,16 +678,23 @@ function PayoutTab() {
           )}
         >
           <svg
-            className={cn("size-4 shrink-0", method === "bank" ? "text-[#F97316]" : "text-gray-400")}
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round"
+            className={cn(
+              "size-4 shrink-0",
+              method === "bank" ? "text-[#F97316]" : "text-gray-400"
+            )}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
             <line x1="1" y1="10" x2="23" y2="10" />
           </svg>
           Enter Bank Information
         </button>
-
+ 
         {/* Mobile Money tab */}
         <button
           onClick={() => setMethod("mobile")}
@@ -651,9 +706,16 @@ function PayoutTab() {
           )}
         >
           <svg
-            className={cn("size-4 shrink-0", method === "mobile" ? "text-[#F97316]" : "text-gray-400")}
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round"
+            className={cn(
+              "size-4 shrink-0",
+              method === "mobile" ? "text-[#F97316]" : "text-gray-400"
+            )}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
             <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
             <line x1="12" y1="18" x2="12.01" y2="18" />
@@ -661,7 +723,7 @@ function PayoutTab() {
           Enter Mobile Money Information
         </button>
       </div>
-
+ 
       {/* Bank form */}
       {method === "bank" && (
         <div className="flex flex-col gap-4 max-w-[640px]">
@@ -672,7 +734,7 @@ function PayoutTab() {
             <Input
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
-              placeholder="Enter your new password"
+              placeholder="Enter your bank name"
               className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
             />
           </div>
@@ -683,20 +745,30 @@ function PayoutTab() {
             <Input
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="Confirm password"
+              placeholder="Enter your account number"
               className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Account Number <span className="text-[#F97316]">*</span>
+              Confirm Account Number <span className="text-[#F97316]">*</span>
             </label>
             <Input
               value={confirmAccount}
               onChange={(e) => setConfirmAccount(e.target.value)}
-              placeholder="Confirm password"
-              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+              placeholder="Enter your account number again to confirm"
+              className={cn(
+                "h-12 rounded-md focus-visible:ring-[#F97316]/40 text-sm",
+                confirmAccount && confirmAccount !== accountNumber
+                  ? "border-red-400 focus-visible:ring-red-300"
+                  : "border-gray-200"
+              )}
             />
+            {confirmAccount && confirmAccount !== accountNumber && (
+              <p className="mt-1 text-xs text-red-500">
+                Account numbers do not match
+              </p>
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -705,13 +777,13 @@ function PayoutTab() {
             <Input
               value={swiftCode}
               onChange={(e) => setSwiftCode(e.target.value)}
-              placeholder="Confirm password"
+              placeholder="Enter your Swift code"
               className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
             />
           </div>
         </div>
       )}
-
+ 
       {/* Mobile Money form */}
       {method === "mobile" && (
         <div className="flex flex-col gap-4 max-w-[640px]">
@@ -719,38 +791,66 @@ function PayoutTab() {
             <label className="block text-sm font-medium text-foreground mb-1.5">
               Mobile Money Number <span className="text-[#F97316]">*</span>
             </label>
-            <Input
-              value={mobileNumber}
-              onChange={(e) => setMobileNumber(e.target.value)}
-              placeholder="Enter your mobile number"
-              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
+            <PhoneField
+              phone={mobileNumber}
+              setPhone={handleMobileNumberChange}
+              cc={mobileCc}
+              setCc={setMobileCc}
             />
           </div>
+ 
+          {/* Service Provider — auto-filled, read-only */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Service Provider <span className="text-[#F97316]">*</span>
+              Service Provider
             </label>
-            <Input
-              value={serviceProvider}
-              readOnly
-              placeholder="Automatically loads"
-              className="h-12 rounded-md border-gray-200 bg-gray-50 text-sm text-muted-foreground cursor-not-allowed"
-            />
+            <div className="relative">
+              <Input
+                value={serviceProvider}
+                readOnly
+                placeholder="Detected automatically from number"
+                className={cn(
+                  "h-12 rounded-md text-sm cursor-not-allowed",
+                  serviceProvider
+                    ? "border-gray-200 bg-gray-50 text-foreground font-medium"
+                    : "border-gray-200 bg-gray-50 text-muted-foreground"
+                )}
+              />
+              {/* Coloured provider chip */}
+              {serviceProvider && (
+                <span
+                  className={cn(
+                    "absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 text-xs font-semibold text-white",
+                    serviceProvider === "MTN" && "bg-yellow-400 text-yellow-900",
+                    serviceProvider === "Airtel" && "bg-red-500",
+                    serviceProvider === "Lycamobile" && "bg-purple-600"
+                  )}
+                >
+                  {serviceProvider}
+                </span>
+              )}
+            </div>
+            {mobileNumber && mobileNumber.replace(/\D/g, "").length >= 3 && !serviceProvider && (
+              <p className="mt-1 text-xs text-amber-600">
+                Prefix not recognised — please verify your number
+              </p>
+            )}
           </div>
+ 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
-              Registered names <span className="text-[#F97316]">*</span>
+              Registered Name <span className="text-[#F97316]">*</span>
             </label>
             <Input
               value={registeredName}
-              readOnly
-              placeholder="Automatically loads user names"
-              className="h-12 rounded-md border-gray-200 bg-gray-50 text-sm text-muted-foreground cursor-not-allowed"
+              onChange={(e) => setRegisteredName(e.target.value)}
+              placeholder="Enter the name registered to this number"
+              className="h-12 rounded-md border-gray-200 focus-visible:ring-[#F97316]/40 text-sm"
             />
           </div>
         </div>
       )}
-
+ 
       {/* Save button */}
       <div className="mt-6">
         <Button
@@ -759,7 +859,9 @@ function PayoutTab() {
           className="h-11 min-w-[120px] rounded-md bg-[#1a1a1a] text-white text-sm font-semibold hover:bg-[#333] transition-colors disabled:opacity-60"
         >
           {isSaving ? (
-            <span className="flex items-center gap-2"><Spinner /> Saving…</span>
+            <span className="flex items-center gap-2">
+              <Spinner /> Saving…
+            </span>
           ) : (
             "Save"
           )}

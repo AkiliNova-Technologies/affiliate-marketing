@@ -43,6 +43,7 @@ import { useReduxAdmin } from "@/hooks/useReduxAdmin";
 import type { Staff } from "@/redux/slices/adminStaffSlice";
 import { useReduxAuth } from "@/hooks/useReduxAuth";
 import { toast } from "sonner";
+import PhoneField from "@/components/PhoneField";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -402,158 +403,76 @@ function AddStaffForm({
   onSuccess: () => void;
 }) {
   const { addStaff, staffActionLoading } = useReduxAdmin();
-  const { checkFieldUniqueness } = useReduxAuth();
-
+ 
   const [step, setStep] = useState<1 | 2>(1);
   const [fn, setFn] = useState("");
   const [ln, setLn] = useState("");
   const [email, setEmail] = useState("");
   const [emailErr, setEmailErr] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneCc, setPhoneCc] = useState("256");
   const [phoneErr, setPhoneErr] = useState("");
   const [password, setPassword] = useState("");
   const [passwordErr, setPasswordErr] = useState("");
   const [nickname, setNickname] = useState("");
-  const [emailChecking, setEmailChecking] = useState(false);
-  const [phoneChecking, setPhoneChecking] = useState(false);
-  const [nicknameChecking, setNicknameChecking] = useState(false);
   // role & perms are kept in state for the UI on step 2,
   // but are NOT sent to the API (it doesn't accept them on creation).
   const [role, setRole] = useState("");
   const [perms, setPerms] = useState<Record<string, boolean>>({});
-
+ 
   const s1ok =
     fn.trim() &&
     ln.trim() &&
     email.trim() &&
     !emailErr &&
-    !emailChecking &&
     phone.trim() &&
     !phoneErr &&
-    !phoneChecking &&
     password.trim() &&
     !passwordErr;
-
-  const validateEmail = async () => {
+ 
+  const validateEmail = () => {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setEmailErr("Please enter a valid email address");
-      return;
-    }
-
-    if (!email) return;
-
-    try {
-      setEmailChecking(true);
-
-      const res = await checkFieldUniqueness({ email });
-
-      if (!res?.emailAvailable) {
-        setEmailErr("Email is already in use");
-      } else {
-        setEmailErr("");
-      }
-    } catch {
-      setEmailErr("Failed to verify email");
-    } finally {
-      setEmailChecking(false);
-    }
-  };
-
-  const validatePhone = async () => {
-    if (phone && !/^\+?[0-9]{7,20}$/.test(phone)) {
-      setPhoneErr("Enter a valid phone number e.g. +256700111222");
-      return;
-    }
-
-    if (!phone) return;
-
-    try {
-      setPhoneChecking(true);
-
-      const res = await checkFieldUniqueness({ phone });
-
-      if (!res?.phoneAvailable) {
-        setPhoneErr("Phone number already exists");
-      } else {
-        setPhoneErr("");
-      }
-    } catch {
-      setPhoneErr("Failed to verify phone");
-    } finally {
-      setPhoneChecking(false);
-    }
-  };
-
-  const validateNickname = async () => {
-    if (!nickname.trim()) return;
-
-    try {
-      setNicknameChecking(true);
-
-      const res = await checkFieldUniqueness({ nickname });
-
-      if (!res?.isUnique) {
-        toast.error("Nickname already taken");
-      }
-    } catch {
-      toast.error("Failed to verify nickname");
-    } finally {
-      setNicknameChecking(false);
-    }
-  };
-
-  const validatePassword = () => {
-    if (password && password.length < 8) {
-      setPasswordErr("Password must be at least 8 characters");
     } else {
-      setPasswordErr("");
+      setEmailErr("");
     }
   };
-
+ 
+ 
   const handlePerm = (key: string, val: boolean) => {
     setPerms((p) => ({ ...p, [key]: val }));
   };
-
+ 
   const handleSubmit = async () => {
     try {
-      // Only send fields the API accepts on POST /api/v1/admin/staff
       await addStaff({
         email,
         firstName: fn,
         lastName: ln,
-        phone,
-        password,
-        ...(nickname.trim() ? { nickname: nickname.trim() } : {}),
+        phone: phone.trim() ? `+${phoneCc}${phone.trim()}` : undefined,
       });
       onSuccess();
     } catch {
       // toast already shown inside addStaff
     }
   };
-
+ 
   return (
     <PageShell>
       <div className="flex flex-1 flex-col p-4 lg:p-6 bg-[#F7F7F7] min-h-screen">
         <div className="mb-6 flex items-center gap-2">
-          <button
-            onClick={onClose}
-            className="text-foreground hover:text-[#F97316] transition-colors"
-          >
+          <button onClick={onClose} className="text-foreground hover:text-[#F97316] transition-colors">
             <IconArrowLeft className="size-5" />
           </button>
-          <h1 className="text-2xl font-bold text-foreground">
-            Staff Management
-          </h1>
+          <h1 className="text-2xl font-bold text-foreground">Staff Management</h1>
         </div>
-
+ 
         <div className="w-full rounded-xl border bg-white p-6">
           <StepBar step={step} />
-
+ 
           {step === 1 && (
             <>
-              <h2 className="text-xl font-semibold text-foreground mb-1">
-                Add Staff
-              </h2>
+              <h2 className="text-xl font-semibold text-foreground mb-1">Add Staff</h2>
               <p className="text-sm text-muted-foreground mb-6">
                 Create a new staff member and assign them roles and permissions
               </p>
@@ -584,14 +503,7 @@ function AddStaffForm({
                   <label className="mb-1.5 block text-sm font-medium text-foreground">
                     Email{" "}
                     {emailErr ? (
-                      <span className="ml-1 font-normal text-red-500 text-xs">
-                        * {emailErr}{" "}
-                        {emailChecking && (
-                          <span className="text-xs text-muted-foreground">
-                            Checking...
-                          </span>
-                        )}
-                      </span>
+                      <span className="ml-1 font-normal text-red-500 text-xs">* {emailErr}</span>
                     ) : (
                       <span className="text-[#F97316]">*</span>
                     )}
@@ -599,101 +511,46 @@ function AddStaffForm({
                   <Input
                     type="email"
                     value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (emailErr) setEmailErr("");
-                    }}
+                    onChange={(e) => { setEmail(e.target.value); if (emailErr) setEmailErr(""); }}
+                    onBlur={validateEmail}
                     placeholder="Enter your email"
                     className={cn(
                       "h-11 rounded-lg focus-visible:ring-[#F97316]",
-                      emailErr ? "border-red-500" : "border-gray-300",
+                      emailErr ? "border-red-500" : "border-gray-300"
                     )}
-                    onBlur={validateEmail}
                   />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm font-medium text-foreground">
                     Phone Number{" "}
                     {phoneErr ? (
-                      <span className="ml-1 font-normal text-red-500 text-xs">
-                        * {phoneErr}
-                      </span>
+                      <span className="ml-1 font-normal text-red-500 text-xs">* {phoneErr}</span>
                     ) : (
                       <span className="text-[#F97316]">*</span>
                     )}
                   </label>
-                  <Input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      if (phoneErr) setPhoneErr("");
-                    }}
-                    onBlur={validatePhone}
-                    placeholder="+256700111222"
-                    className={cn(
-                      "h-11 rounded-lg focus-visible:ring-[#F97316]",
-                      phoneErr ? "border-red-500" : "border-gray-300",
-                    )}
+                  <PhoneField
+                    phone={phone}
+                    setPhone={(v) => { setPhone(v); if (phoneErr) setPhoneErr(""); }}
+                    cc={phoneCc}
+                    setCc={setPhoneCc}
                   />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">
-                    Password{" "}
-                    {passwordErr ? (
-                      <span className="ml-1 font-normal text-red-500 text-xs">
-                        * {passwordErr}
-                      </span>
-                    ) : (
-                      <span className="text-[#F97316]">*</span>
-                    )}
-                  </label>
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (passwordErr) setPasswordErr("");
-                    }}
-                    onBlur={validatePassword}
-                    placeholder="Min. 8 characters"
-                    className={cn(
-                      "h-11 rounded-lg focus-visible:ring-[#F97316]",
-                      passwordErr ? "border-red-500" : "border-gray-300",
-                    )}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">
-                    Nickname{" "}
-                    <span className="text-muted-foreground font-normal text-xs">
-                      (optional)
-                    </span>
-                  </label>
-                  <Input
-                    value={nickname}
-                    onChange={(e) => setNickname(e.target.value)}
-                    onBlur={validateNickname}
-                    placeholder="e.g. alex_ops"
-                    className="h-11 rounded-lg border-gray-300 focus-visible:ring-[#F97316]"
-                  />
+                  {phoneErr && (
+                    <p className="mt-1 text-xs text-red-500">{phoneErr}</p>
+                  )}
                 </div>
               </div>
             </>
           )}
-
+ 
           {step === 2 && (
             <>
-              <h2 className="text-xl font-semibold text-foreground mb-1">
-                Assign Roles &amp; Permissions
-              </h2>
+              <h2 className="text-xl font-semibold text-foreground mb-1">Assign Roles &amp; Permissions</h2>
               <p className="text-sm text-muted-foreground mb-6">
                 Create a new staff member and assign them roles and permissions
               </p>
               <div className="mb-6">
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
-                  Assign role
-                </label>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">Assign role</label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger className="h-11 w-full rounded-lg border-gray-300 text-sm">
                     <SelectValue placeholder="Select a role from the drop down" />
@@ -702,25 +559,19 @@ function AddStaffForm({
                     <SelectItem value="Admin">Admin</SelectItem>
                     <SelectItem value="Finance">Finance</SelectItem>
                     <SelectItem value="Support">Support</SelectItem>
-                    <SelectItem value="Product Moderator">
-                      Product Moderator
-                    </SelectItem>
+                    <SelectItem value="Product Moderator">Product Moderator</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="rounded-xl border border-gray-100 p-5">
-                <h3 className="text-lg font-semibold text-foreground mb-1">
-                  Custom Permissions
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Assign users permissions
-                </p>
+                <h3 className="text-lg font-semibold text-foreground mb-1">Custom Permissions</h3>
+                <p className="text-sm text-muted-foreground mb-4">Assign users permissions</p>
                 <PermissionsPanel perms={perms} onChange={handlePerm} />
               </div>
             </>
           )}
         </div>
-
+ 
         <div className="mt-6 flex justify-end">
           {step === 1 && (
             <Button
@@ -730,20 +581,20 @@ function AddStaffForm({
                 "h-11 px-10 gap-2 rounded-md font-semibold",
                 s1ok
                   ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
-                  : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none",
+                  : "bg-[#F97316]/40 text-white cursor-not-allowed pointer-events-none"
               )}
             >
               Next <IconArrowRight className="size-4" />
             </Button>
           )}
           {step === 2 && (
-            <div className="flex items-center justify-between w-full gap-3">
-              <Button
+            <div className="flex items-center gap-3">
+              <button
                 onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors bg-white rounded-md px-12 py-2 border border-gray-300 h-11 hover:bg-gray-50"
+                className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                Back
-              </Button>
+                <IconArrowLeft className="size-4" /> Back
+              </button>
               <Button
                 onClick={handleSubmit}
                 disabled={staffActionLoading}
@@ -751,16 +602,10 @@ function AddStaffForm({
                   "h-11 px-10 gap-2 rounded-md font-semibold",
                   !staffActionLoading
                     ? "bg-[#F97316] text-white hover:bg-[#F97316]/90"
-                    : "bg-[#F97316]/40 text-white cursor-not-allowed",
+                    : "bg-[#F97316]/40 text-white cursor-not-allowed"
                 )}
               >
-                {staffActionLoading ? (
-                  <>
-                    <Spinner /> Creating…
-                  </>
-                ) : (
-                  "Create Staff"
-                )}
+                {staffActionLoading ? <><Spinner /> Creating…</> : "Create Staff"}
               </Button>
             </div>
           )}

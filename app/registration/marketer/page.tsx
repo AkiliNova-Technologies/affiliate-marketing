@@ -36,13 +36,14 @@ export default function MarketerRegistrationPage() {
     marketerRegistration,
     marketerStep1InitEmail,
     marketerStep2VerifyEmail,
-    marketerResendOTP,         // resend email OTP  → POST .../resend-email-otp
-    marketerStep3InitPhone,    // capture phone     → POST .../init-phone
-    marketerTriggerPhoneOtp,   // trigger phone OTP → POST .../trigger-phone-otp
-    marketerResendPhoneOTP,    // resend phone OTP  → POST .../resend-phone-otp
-    marketerVerifyPhone,       // verify phone OTP  → POST .../verify-phone
-    marketerStep4Finalize,     // finalize account  → POST .../finalize
+    marketerResendOTP,
+    marketerStep3InitPhone,
+    marketerTriggerPhoneOtp,
+    marketerResendPhoneOTP,
+    marketerVerifyPhone,
+    marketerStep4Finalize,
     clearMarketerFlow,
+    checkFieldUniqueness,
     loading,
   } = useReduxAuth();
 
@@ -91,20 +92,12 @@ export default function MarketerRegistrationPage() {
   };
 
   // ── Step 3 → 4: capture phone then trigger first phone OTP ─────────────────
-  // The API requires two sequential calls:
-  //   1. POST .../init-phone   — saves the phone number on the flow
-  //   2. POST .../trigger-phone-otp — dispatches the first OTP SMS
   const handlePhoneNext = async (phone: string, countryCode: string) => {
     try {
       const flowId = marketerRegistration.registrationFlowId;
       if (!flowId) throw new Error("Registration flow ID missing");
-
-      // Save phone against the registration flow
       await marketerStep3InitPhone(flowId, `+${countryCode}${phone}`);
-
-      // Trigger the first SMS OTP now that the phone is registered
       await marketerTriggerPhoneOtp(flowId);
-
       setFormData((p) => ({ ...p, phone, countryCode }));
       setStep("verify-phone");
     } catch {
@@ -113,7 +106,6 @@ export default function MarketerRegistrationPage() {
   };
 
   // ── Step 4: resend phone OTP ────────────────────────────────────────────────
-  // Uses the dedicated resend endpoint, NOT init-phone again.
   const handleResendPhoneOtp = async () => {
     try {
       const flowId = marketerRegistration.registrationFlowId;
@@ -124,9 +116,7 @@ export default function MarketerRegistrationPage() {
     }
   };
 
-  // ── Step 4 → 5: verify phone OTP server-side ────────────────────────────────
-  // Previously this was skipped (OTP stored locally). Now we verify with the
-  // server before advancing — POST .../verify-phone
+  // ── Step 4 → 5: verify phone OTP ───────────────────────────────────────────
   const handleVerifyPhone = async (otp: string) => {
     try {
       const flowId = marketerRegistration.registrationFlowId;
@@ -193,7 +183,11 @@ export default function MarketerRegistrationPage() {
             {/* Right panel */}
             <div className="flex-1 bg-[#faf5f0] px-10 py-10 flex flex-col justify-center min-h-[450px] max-h-[500px] overflow-y-auto">
               {step === "get-started" && (
-                <GetStarted onNext={handleGetStarted} loading={loading} />
+                <GetStarted
+                  onNext={handleGetStarted}
+                  onCheckEmail={(email) => checkFieldUniqueness({ email })}
+                  loading={loading}
+                />
               )}
 
               {step === "verify-email" && (
@@ -210,6 +204,9 @@ export default function MarketerRegistrationPage() {
                 <PhoneNumber
                   onNext={handlePhoneNext}
                   onBack={() => setStep("verify-email")}
+                  onCheckPhone={(phone, cc) =>
+                    checkFieldUniqueness({ phone: `+${cc}${phone}` })
+                  }
                   loading={loading}
                 />
               )}
@@ -226,7 +223,10 @@ export default function MarketerRegistrationPage() {
               )}
 
               {step === "last-info" && (
-                <LastInfo onSubmit={handleFinalize} loading={loading} />
+                <LastInfo
+                  onSubmit={handleFinalize}
+                  loading={loading}
+                />
               )}
             </div>
           </div>
