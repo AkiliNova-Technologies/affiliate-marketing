@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
 
-const BASE_URL = "";
+const BASE_URL = "https://affiliate-marketing-system-backend-production.up.railway.app";
 
 let isRefreshing = false;
 let failedQueue: Array<{
